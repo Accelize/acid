@@ -20,7 +20,7 @@ variable "image" {
 # Resources name
 
 locals {
-  name = "AzurePipeline${var.name}"
+  name = var.name
 }
 
 # Ansible command
@@ -28,9 +28,11 @@ locals {
 locals {
   # Ansible-playbook CLI
   ansible = <<-EOF
-    ANSIBLE_SSH_ARGS="-o ControlMaster=auto -o ControlPersist=60s" \
+    ANSIBLE_SSH_ARGS="-o ControlMaster=auto -o ControlPersist=60s -o PreferredAuthentications=publickey" \
     ANSIBLE_PIPELINING="True" ANSIBLE_HOST_KEY_CHECKING="False" \
     ANSIBLE_FORCE_COLOR="True" ANSIBLE_NOCOLOR="False" \
+    ANSIBLE_DEPRECATION_WARNINGS="False" ANSIBLE_ACTION_WARNINGS="False" \
+    ANSIBLE_DISPLAY_SKIPPED_HOSTS="False" \
     ansible-playbook ${var.playbook} -u ${local.user} \
     --private-key '${local_file.ssh_key_file.filename}' \
   EOF
@@ -62,13 +64,30 @@ resource "tls_private_key" "ssh_key" {
 
 resource "local_file" "ssh_key_file" {
   content  = tls_private_key.ssh_key.private_key_pem
-  filename = "${path.module}/ssh_private.pem"
+  filename = local.private_key_path
   provisioner "local-exec" {
     command = "chmod 600 ${self.filename}"
   }
 }
 
 locals {
-  private_key = tls_private_key.ssh_key.private_key_pem
-  public_key  = tls_private_key.ssh_key.public_key_openssh
+  private_key_path = "${path.module}/ssh_private.pem"
+  private_key      = tls_private_key.ssh_key.private_key_pem
+  public_key       = tls_private_key.ssh_key.public_key_openssh
+}
+
+# IP address
+
+output "ipAddress" {
+  description = "Agent IP address"
+  value       = local.ip_address
+}
+output "user" {
+  description = "Agent user"
+  value       = local.user
+}
+output "privateKey" {
+  description = "Private key"
+  value       = local.private_key_path
+  sensitive   = true
 }

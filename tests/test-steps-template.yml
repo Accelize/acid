@@ -1,0 +1,6 @@
+---
+# Tests everything is ready
+
+steps:
+  - script: echo Hello
+    displayName: Check started

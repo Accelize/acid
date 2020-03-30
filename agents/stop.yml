@@ -8,7 +8,7 @@ parameters:
   agentDescription: AWS EC2
   # Agent instance provider
   provider: awsEc2
-  # Path to "acid" directory.
+  # Path to "acid" directory
   acidDir: $(Build.SourcesDirectory)/acid
   # Job to wait for completion before trigger agent stop
   dependsOn: startAgent
@@ -20,21 +20,49 @@ jobs:
     condition: always()
     variables:
       - name: terraformWorkingDir
-        value: ${{ parameters.acidDir }}/agents/${{ parameters.provider }}
+        value: $(acidPath.acidDir)/agents/${{ parameters.provider }}
       - name: agentName
-        value: $(Build.DefinitionName) ${{ parameters.agentDescription }}
+        value: $(Build.BuildId) $(Build.DefinitionName) ${{ parameters.agentDescription }}
+
     steps:
+
+      - checkout: self
+        submodules: true
+
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.x'
+          addToPath: true
+          architecture: 'x64'
+        displayName: Get Python
+
+      - task: PythonScript@0
+        displayName: Autodetect Acid path
+        name: acidPath
+        inputs:
+          scriptSource: inline
+          script: |
+            from os.path import isdir, dirname, join
+            for path in {"$(Agent.BuildDirectory)/s",
+                         "$(Agent.BuildDirectory)/s/acid",
+                         "${{ parameters.acidDir }}"}:
+                print(f'Searching in path: "{path}"')
+                if isdir(join(path, "agents/awsEc2")):
+                    print('Detected Acid path:', path)
+                    break
+            else:
+                raise RuntimeError('Unable to find "acid" directory')
+
+            import sys
+            sys.path.append(path)
+            from __init__ import export
+            export('acidDir', path)
 
       - task: DownloadPipelineArtifact@2
         displayName: Download Terraform state
         inputs:
           artifactName: Terraform State ${{ parameters.agentDescription }}
           targetPath: $(terraformWorkingDir)
-
-      - task: TerraformInstaller@0
-        displayName: Install Terraform
-        inputs:
-          terraformVersion: '0.12.13'
 
       - script: terraform init -input=false
         displayName: Initialize Terraform plugins

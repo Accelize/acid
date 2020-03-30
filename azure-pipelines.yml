@@ -1,0 +1,147 @@
+---
+name: ACID tests
+
+trigger:
+  batch: true
+  branches:
+    include:
+      - master
+  paths:
+    exclude:
+      - readme.md
+      - .gitignore
+      - LICENSE
+schedules:
+  - cron: "0 12 * * 0"
+    displayName: Weekly test
+    branches:
+      include:
+        - master
+    always: true
+pr: none
+pool:
+  vmImage: ubuntu-latest
+
+resources:
+  # Simulate external import
+  repositories:
+    - repository: acid
+      type: github
+      name: Accelize/acid
+      endpoint: Accelize
+
+jobs:
+
+  # Lint
+  - job: lint
+    displayName: Run lint tests
+    dependsOn: []
+    steps:
+      # Initialize testing environment
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.x'
+          addToPath: true
+          architecture: 'x64'
+        displayName: Get Python
+
+      - script: "pip install --disable-pip-version-check --no-cache-dir
+                 flake8 yamllint ansible-lint"
+        displayName: Get Python dependencies
+        condition: always()
+
+      # Run tests
+      - script: flake8
+        displayName: Lint Python modules
+        condition: always()
+
+      - script: yamllint -s .
+        displayName: Lint YAML files
+        condition: always()
+
+      - script: ansible-lint
+        displayName: Lint Ansible configuration
+        condition: always()
+
+      - template: tests/terraform-lint-steps-template.yml
+        parameters:
+          agents:
+            - awsEc2
+
+  # Start agents
+  - template: agents/start.yml@acid
+    parameters:
+      jobName: startAgent_AwsEc2_centOs7
+      agentDescription: AWS EC2 CentOS 7
+      provider: awsEc2
+      image: centos_7
+      instanceType: t3a.nano
+
+  - template: agents/start.yml@acid
+    parameters:
+      jobName: startAgent_AwsEc2_centOs8
+      agentDescription: AWS EC2 CentOS 8
+      provider: awsEc2
+      image: centos_8
+      instanceType: t3a.nano
+
+  - template: agents/start.yml@acid
+    parameters:
+      jobName: startAgent_AwsEc2_ubuntu1804
+      agentDescription: AWS EC2 Ubuntu 18.04
+      provider: awsEc2
+      image: ubuntu_18_04
+      instanceType: t3a.nano
+
+  # Run tests on agents
+  - job: runTests_AwsEc2_centOs7
+    displayName: Run tests on AWS EC2 CentOS 7
+    dependsOn: startAgent_AwsEc2_centOs7
+    pool:
+      name: Default
+      demands:
+        - agent.Name -equals $(Build.BuildId) $(Build.DefinitionName) AWS EC2 CentOS 7
+    steps:
+      - template: tests/test-steps-template.yml
+
+  - job: runTests_AwsEc2_centOs8
+    displayName: Run tests on AWS EC2 CentOS 8
+    dependsOn: startAgent_AwsEc2_centOs8
+    pool:
+      name: Default
+      demands:
+        - agent.Name -equals $(Build.BuildId) $(Build.DefinitionName) AWS EC2 CentOS 8
+    steps:
+      - template: tests/test-steps-template.yml
+
+  - job: runTests_AwsEc2_ubuntu1804
+    displayName: Run tests on AWS EC2 Ubuntu 18.04
+    dependsOn: startAgent_AwsEc2_ubuntu1804
+    pool:
+      name: Default
+      demands:
+        - agent.Name -equals $(Build.BuildId) $(Build.DefinitionName) AWS EC2 Ubuntu 18.04
+    steps:
+      - template: tests/test-steps-template.yml
+
+  # Stop agents
+  - template: agents/stop.yml@acid
+    parameters:
+      jobName: stopAgent_AwsEc2_centOs7
+      provider: awsEc2
+      agentDescription: AWS EC2 CentOS 7
+      dependsOn: runTests_AwsEc2_centOs7
+
+  - template: agents/stop.yml@acid
+    parameters:
+      jobName: stopAgent_AwsEc2_centOs8
+      provider: awsEc2
+      agentDescription: AWS EC2 CentOS 8
+      dependsOn: runTests_AwsEc2_centOs8
+
+  - template: agents/stop.yml@acid
+    parameters:
+      jobName: stopAgent_AwsEc2_ubuntu1804
+      provider: awsEc2
+      agentDescription: AWS EC2 Ubuntu 18.04
+      dependsOn: runTests_AwsEc2_ubuntu1804

@@ -1,0 +1,5 @@
+[flake8]
+filename = *.py
+max-line-length = 88
+extend-ignore = E203, E402, W504
+

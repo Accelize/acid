@@ -21,4 +21,4 @@ class FilterModule(object):
     @staticmethod
     def filters():
         """Return filter"""
-        return {'strip': strip}
+        return {"strip": strip}

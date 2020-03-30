@@ -1,3 +1,5 @@
+[![Build Status](https://dev.azure.com/Accelize/DevOps/_apis/build/status/Acid?branchName=master)](https://dev.azure.com/Accelize/DevOps/_build/latest?definitionId=6&branchName=master)
+
 # ACID: Accelize Continuous Integration & Delivery
 
 Some Accelize tools used for CI/CD and DevOps.
@@ -19,7 +21,9 @@ A quick content description.
     * `sign_packages.py`: Sign RPM & DEB packages.
 * Python library: `acid` can be imported as Python library that provides some
   functions indented to be used from inside CI pipelines.
+* `acid` command, can be used to start agent outside Azure Pipeline.
 
 `start.yml` require that the `agentManagerToken` variable is set to a Azure 
 DevOps Personal access Token that give `read`, `manage` accesses to 
-`Agent Pools` and `Deployment group` scopes.
+`Agent Pools` and `Deployment group` scopes. The variable must be set in a 
+variable group `agentManager`.

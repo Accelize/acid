@@ -17,25 +17,38 @@ parameters:
   acidDir: $(Build.SourcesDirectory)/acid
   # Path to Ansible "playbook.yml" file. Default to a playbook that only start
   # the agent.
-  ansiblePlaybook: $(acidDir)/agents/playbook.yml
+  ansiblePlaybook: $(acidPath.acidDir)/agents/playbook.yml
   # Agent shutdown timeout in minute
   timeout: 60
   # Use spot instance
   spot: true
+  # Jobs dependencies
+  dependsOn: []
+  # Agent Pool name
+  agentPool: Default
+  # Job condition
+  condition: succeeded()
 
 jobs:
   - job: ${{ parameters.jobName }}
     displayName: Start ${{ parameters.agentDescription }} agent
+    dependsOn: ${{ parameters.dependsOn }}
+    condition: ${{ parameters.condition }}
     variables:
       - group: agentManager
       - name: terraformWorkingDir
-        value: ${{ parameters.acidDir }}/agents/${{ parameters.provider }}
+        value: $(acidPath.acidDir)/agents/${{ parameters.provider }}
       - name: agentName
-        value: $(Build.DefinitionName) ${{ parameters.agentDescription }}
-      - name: acidDir
-        value: ${{ parameters.acidDir }}
+        value: $(Build.BuildId) $(Build.DefinitionName) ${{ parameters.agentDescription }}
+      - name: ansibleRolePath
+        value: "~/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles:\
+                $(acidPath.acidDir)/.cache/lib/ansible/roles:\
+                $(acidPath.acidDir)/roles"
 
     steps:
+
+      - checkout: self
+        submodules: true
 
       - task: UsePythonVersion@0
         inputs:
@@ -45,18 +58,37 @@ jobs:
         displayName: Get Python
 
       - task: PythonScript@0
+        displayName: Autodetect Acid path
+        name: acidPath
+        inputs:
+          scriptSource: inline
+          script: |
+            from os.path import isdir, dirname, join
+            for path in {"$(Agent.BuildDirectory)/s",
+                         "$(Agent.BuildDirectory)/s/acid",
+                         "${{ parameters.acidDir }}"}:
+                print(f'Searching in path: "{path}"')
+                if isdir(join(path, "agents/awsEc2")):
+                    print('Detected Acid path:', path)
+                    break
+            else:
+                raise RuntimeError('Unable to find "acid" directory')
+
+            import sys
+            sys.path.append(path)
+
+            from __init__ import export
+            export('acidDir', path)
+
+      - task: PythonScript@0
         displayName: Initialize Ansible
         inputs:
           scriptSource: inline
           script: |
-            from acid import ensure_ansible_roles
+            import sys
+            sys.path.append("$(acidPath.acidDir)")
+            from __init__ import ensure_ansible_roles
             ensure_ansible_roles("${{ parameters.ansiblePlaybook }}")
-
-      # TODO: Get latest Terraform version
-      - task: TerraformInstaller@0
-        displayName: Install Terraform
-        inputs:
-          terraformVersion: '0.12.13'
 
       - script: terraform init -input=false
         displayName: Initialize Terraform plugins
@@ -67,17 +99,19 @@ jobs:
         inputs:
           scriptSource: inline
           script: |
-            from acid import dump_tfvars, define_unique_name
+            import sys
+            sys.path.append("$(acidPath.acidDir)")
+            from __init__ import dump_tfvars, define_unique_name
             dump_tfvars(
               "$(terraformWorkingDir)",
-              name=define_unique_name(
+              name="AzurePipeline" + define_unique_name(
                   "$(System.TeamProject)",
                   "$(Build.Repository.Name)",
                   "$(Build.SourceBranchName)",
                   "$(Build.BuildId)"),
               image="${{ parameters.image }}",
               playbook="${{ parameters.ansiblePlaybook }}")
-            print(f'Agent Name: $(agentName)')
+            print('Agent Name: $(agentName)')
 
       - ${{ if eq(parameters.provider, 'awsEc2') }}:
         - task: PythonScript@0
@@ -85,7 +119,9 @@ jobs:
           inputs:
             scriptSource: inline
             script: |
-              from acid import dump_tfvars
+              import sys
+              sys.path.append("$(acidPath.acidDir)")
+              from __init__ import dump_tfvars
               dump_tfvars(
                 "$(terraformWorkingDir)",
                 instance_type="${{ parameters.instanceType }}",
@@ -104,8 +140,9 @@ jobs:
             AZURE_AGENT_TOKEN: $(agentManagerToken)
             AZURE_AGENT_SHUTDOWN_TIMEOUT: ${{ parameters.timeout }}
             AZURE_AGENT_NAME: $(agentName)
-            ANSIBLE_ROLES_PATH: "~/.ansible/roles:/usr/share/ansible/roles:\
-                                 /etc/ansible/roles:$(acidDir)/roles"
+            AZURE_AGENT_URL: $(System.TeamFoundationCollectionUri)
+            AZURE_AGENT_POOL: ${{ parameters.agentPool }}
+            ANSIBLE_ROLES_PATH: $(ansibleRolePath)
 
       - publish: $(terraformWorkingDir)
         artifact: Terraform State ${{ parameters.agentDescription }}

@@ -2,7 +2,8 @@
 
 - name: Ensure agent Shutdown timeout is set
   command: shutdown -h {{ agent_shutdown_timeout }}
-  changed_when: False
+  changed_when: false
+  when: agent_shutdown_timeout != ""  # noqa 602
 
 - name: Get Agent user
   set_fact:
@@ -18,12 +19,23 @@
   with_items:
     - option: max_parallel_downloads
       value: 10
-    - option: fastestmirror
-      value: "true"
     - option: install_weak_deps
       value: "false"
-  when: 'not (ansible_os_family == "RedHat" and
-         ansible_distribution_major_version == "7")'
+    - option: assumeyes
+      value: "true"
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version != "7"
+
+- name: Ensure YUM is configured
+  ini_file:
+    path: /etc/yum.conf
+    section: main
+    option: assumeyes
+    value: "1"
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version == "7"
 
 - name: Ensure APT is configured
   copy:
@@ -32,19 +44,11 @@
   when: ansible_os_family == 'Debian'
 
 - name: Ensure PIP is configured
-  copy:
-    src: pip.conf
-    dest: /etc/pip.conf
-
-- name: Ensure YUM fastest mirror is enabled
-  yum:
-    name: yum-plugin-fastestmirror
-    state: present
-  retries: 10
-  delay: 1
-  when:
-    - ansible_os_family == "RedHat"
-    - ansible_distribution_major_version == "7"
+  ini_file:
+    path: /etc/pip.conf
+    section: global
+    option: disable-pip-version-check
+    value: "true"
 
 - name: Ensure Apt cache is up to date
   apt:
@@ -54,57 +58,20 @@
   changed_when: false
   when: ansible_os_family == 'Debian'
 
-- name: Ensure Git is present
+- name: Ensure Wandisco Git repository is present
+  yum:
+    name: http://opensource.wandisco.com/rhel/7/git/x86_64/wandisco-git-release-7-2.noarch.rpm
+    state: present
+  retries: 10
+  delay: 1
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version == "7"
+
+- name: Ensure Git is present and up to date
   package:
     name: git
-    state: present
-  retries: 10
-  delay: 1
-  when: 'not (ansible_os_family == "RedHat" and
-         ansible_distribution_major_version == "7")'
-
-- name: Ensure Git version < 2.9.0 is absent
-  yum:
-    name: git
-    state: absent
-  when:
-    - ansible_os_family == "RedHat"
-    - ansible_distribution_major_version == "7"
-
-- name: Ensure IUS repository is present
-  yum:
-    name: https://centos7.iuscommunity.org/ius-release.rpm
-    state: present
-  retries: 10
-  delay: 1
-  when:
-    - ansible_os_family == "RedHat"
-    - ansible_distribution_major_version == "7"
-
-- name: Ensure a Git version >= 2.9.0 and Pip 2 are present
-  yum:
-    name:
-      - git2u
-      - python-pip
-    state: present
-  retries: 10
-  delay: 1
-  when:
-    - ansible_os_family == "RedHat"
-    - ansible_distribution_major_version == "7"
-
-- name: Ensure Python 3 is present
-  package:
-    name:
-      - python3-pip
-      - python3-setuptools
-    state: present
-  retries: 10
-  delay: 1
-
-- name: Ensure GitHub Python module is present
-  pip:
-    name: github3.py
+    state: latest  # noqa 403
   retries: 10
   delay: 1
 
@@ -115,11 +82,11 @@
     owner: "{{ agent_user }}"
     group: "{{ agent_user }}"
 
-- name: Get agent latest release
-  github_release:
-    user: microsoft
-    repo: azure-pipelines-agent
-    action: latest_release
+- name: Get the agent latest release
+  uri:
+    url: "https://api.github.com/repos/microsoft/\
+          azure-pipelines-agent/releases/latest"
+    body_format: json
   register: agent_release
   retries: 10
   delay: 1
@@ -127,8 +94,9 @@
 - name: Ensure the agent is installed
   unarchive:
     src: "https://vstsagentpackage.azureedge.net/agent/\
-          {{ agent_release.tag | strip('v') }}/\
-          vsts-agent-linux-x64-{{ agent_release.tag | strip('v') }}.tar.gz"
+          {{ agent_release.json['tag_name'] | strip('v') }}/\
+          vsts-agent-linux-x64-\
+          {{ agent_release.json['tag_name'] | strip('v') }}.tar.gz"
     dest: "{{ agent_directory }}"
     owner: "{{ agent_user }}"
     group: "{{ agent_user }}"
@@ -143,24 +111,10 @@
     chdir: "{{ agent_directory }}"
   changed_when: false
 
-- name: Ensure ~/.bashrc Python aliases are presents
-  lineinfile:
-    path: /home/{{ agent_user }}/.bashrc
-    regexp: "{{ item.regexp }}"
-    line: "{{ item.line }}"
-  with_items:
-    # Allow to keep the same call behavior as on Microsoft managed agents
-    - regexp: "^alias python="
-      line: "alias python='/usr/bin/python3'"
-    - regexp: "^alias pip="
-      line: "alias pip='sudo /usr/bin/pip3'"
-    - regexp: "^alias pip3="
-      line: "alias pip3='sudo /usr/bin/pip3'"
-
 - name: Ensure the agent is configured
   command: "./config.sh --unattended --acceptteeeula
            --pool '{{ agent_pool }}' --agent '{{ agent_name }}' --replace
-           --url 'https://dev.azure.com/{{ agent_organization }}'
+           --url '{{ agent_url }}'
            --work '{{ agent_work_dir }}'
            --auth PAT --token '{{ agent_token }}'"
   become: true
@@ -168,6 +122,11 @@
   args:
     chdir: "{{ agent_directory }}"
   changed_when: false
+  when:
+    - agent_name != ""  # noqa 602
+    - agent_token != ""  # noqa 602
+    - agent_url != ""  # noqa 602
+    - agent_pool != ""  # noqa 602
 
 - name: Ensure the agent service is installed and started
   command: "{{ item }}"
@@ -178,3 +137,8 @@
     - ./svc.sh install
     - ./svc.sh start
   notify: Ensure agent service is restarted
+  when:
+    - agent_name != ""  # noqa 602
+    - agent_token != ""  # noqa 602
+    - agent_url != ""  # noqa 602
+    - agent_pool != ""  # noqa 602

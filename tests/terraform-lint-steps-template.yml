@@ -1,0 +1,23 @@
+---
+# Perform tests against Agents Terraform configurations
+
+parameters:
+  # Agents
+  agents: []
+
+steps:
+  - ${{ each agent in parameters.agents }}:
+      - script: terraform init -backend=false -input=false
+        displayName: Initialize "${{ agent }}" configuration
+        workingDirectory: agents/${{ agent }}
+        condition: always()
+
+      - script: terraform fmt 1>&2
+        displayName: Lint "${{ agent }}" configuration
+        workingDirectory: agents/${{ agent }}
+        condition: always()
+
+      - script: terraform validate
+        displayName: Validate "${{ agent }}" configuration
+        workingDirectory: agents/${{ agent }}
+        condition: always()
