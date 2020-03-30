@@ -1,0 +1,6 @@
+APT::Install-Recommends "0";
+APT::Install-Suggests "0";
+APT::Acquire::Queue-Mode "access";
+APT::Acquire::Retries 10;
+APT::Get::Assume-Yes "true";
+APT::Get::force-yes "true";

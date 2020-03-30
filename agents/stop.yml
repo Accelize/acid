@@ -1,0 +1,53 @@
+---
+
+parameters:
+  jobName: stopAgent
+  agentDescription: Acid
+  provider: awsEc2
+  connection:
+  region:
+  dependsOn: startAgent
+
+jobs:
+  - job: ${{ parameters.jobName }}
+    displayName: Stop ${{ parameters.agentDescription }} agent
+    dependsOn: ${{ parameters.dependsOn }}
+    condition: always()
+    pool:
+      vmImage: ubuntu-20.04
+    variables:
+      - name: acidDir
+        value: $(Agent.BuildDirectory)/.acid
+      - name: terraformWorkingDir
+        value: $(acidDir)/agents/${{ parameters.provider }}
+
+    steps:
+
+      - checkout: acid
+        displayName: Checkout Acid
+        fetchDepth: 1
+        path: .acid
+
+      - task: DownloadPipelineArtifact@2
+        displayName: Get state
+        inputs:
+          artifactName: Acid State ${{ parameters.agentDescription }}
+          targetPath: $(terraformWorkingDir)
+
+      - task: Cache@2
+        inputs:
+          key: acidTerraformPlugins | $(terraformWorkingDir)/agent.tf | $(terraformWorkingDir)/common.tf
+          path: $(terraformWorkingDir)/.terraform
+        displayName: Cache Terraform plugins
+
+      - script: terraform init -input=false
+        displayName: Initialize Terraform
+        workingDirectory: $(terraformWorkingDir)
+
+      - template: ${{ parameters.provider }}/run_script.yml
+        parameters:
+          connection: ${{ parameters.connection }}
+          region: ${{ parameters.region }}
+          workingDirectory: $(terraformWorkingDir)
+          inlineScript: $(acidDir)/agents/tf_run.py destroy -auto-approve -input=false
+          displayName: Stop agent

@@ -1,0 +1,10 @@
+{
+  "does not support creation of Azure Spot Virtual Machines.": {
+    "update_tfvars": {
+      "spot": "false"
+    },
+    "warn": "Your parameters seems to not be compatible with spot virtual machines, set 'spot: false' parameter to disable it and avoid useless retries."
+  },
+  "NicInUse": {},
+  "timeout - last error: dial tcp": {}
+}

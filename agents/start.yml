@@ -1,0 +1,157 @@
+---
+
+parameters:
+  jobName: startAgent
+  dependsOn: []
+  condition: succeeded()
+  agentDescription: Acid
+  agentPool: Default
+  agentVersion:
+  provider: awsEc2
+  connection:
+  instanceType:
+  spot:
+  timeout: 60
+  region:
+  resourceGroupName:
+  virtualNetworkName:
+  image:
+  ansiblePlaybook:
+  ansibleRequirements:
+  ansibleMitogen: false
+  inMemoryWorkDir:
+
+jobs:
+  - job: ${{ parameters.jobName }}
+    displayName: Start ${{ parameters.agentDescription }} agent
+    dependsOn: ${{ parameters.dependsOn }}
+    condition: ${{ parameters.condition }}
+    pool:
+      vmImage: ubuntu-20.04
+    variables:
+      - group: agentManager
+      - name: acidDir
+        value: $(Agent.BuildDirectory)/.acid
+      - name: ansibleRoles
+        value: $(acidDir)/roles
+      - name: terraformWorkingDir
+        value: $(acidDir)/agents/${{ parameters.provider }}
+      - name: agentName
+        value: $(Build.BuildId) ${{ parameters.agentDescription }}
+      - name: ansibleRolePath
+        value: ~/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles:$(ansibleRoles)
+      - ${{ if parameters.ansiblePlaybook }}:
+          - name: ansiblePlaybook
+            value: $(Build.SourcesDirectory)/${{ parameters.ansiblePlaybook }}
+      - ${{ if not(parameters.ansiblePlaybook) }}:
+          - name: ansiblePlaybook
+            value: $(acidDir)/agents/playbook.yml
+
+    steps:
+
+      - ${{ if not(contains(parameters.ansiblePlaybook, '$(acidDir)')) }}:
+        - checkout: self
+          fetchDepth: 1
+          path: s
+
+      - checkout: acid
+        displayName: Checkout Acid
+        fetchDepth: 1
+        path: .acid
+
+      - task: PythonScript@0
+        displayName: Initialize agent parameters
+        inputs:
+          scriptSource: inline
+          script: |
+            import os, sys, json, pprint, secrets
+
+            providers = [file.name for file in os.scandir("$(acidDir)/agents") if file.is_dir()]
+            if "${{ parameters.provider }}" not in providers:
+                providers = "\n- ".join(providers)
+                sys.exit(
+                    f'\033[31mInvalid "provider" parameter, possible values:\033[30m\n- {providers}'
+                )
+
+            with open(
+                "$(acidDir)/agents/${{ parameters.provider }}/images.auto.tfvars.json", "rb"
+            ) as file:
+                images = sorted(json.load(file)["images"].keys())
+            if "${{ parameters.image }}" not in images:
+                images = "\n- ".join(images)
+                sys.exit(f'\033[31mInvalid "image" parameter, possible values:\033[30m\n- {images}')
+
+            parameters = {
+                key: value
+                for key, value in dict(
+                    name=f"acid{secrets.token_hex(12).lower()}",
+                    image="${{ parameters.image }}",
+                    ansiblePlaybook="$(ansiblePlaybook)",
+                    instanceType="${{ parameters.instanceType }}",
+                    spot="${{ parameters.spot }}",
+                    resourceGroupName="${{ parameters.resourceGroupName }}",
+                    virtualNetworkName="${{ parameters.virtualNetworkName }}",
+                ).items()
+                if value
+            }
+            with open("$(terraformWorkingDir)/terraform.tfvars.json", "wt") as json_file:
+                json.dump(parameters, json_file)
+            print("\033[32mAgent parameters:\033[30m")
+            pprint.pp(parameters)
+
+      - ${{ if parameters.ansibleRequirements }}:
+        - script: ansible-galaxy role install -r $(Build.SourcesDirectory)/${{ parameters.ansibleRequirements }} -p $(ansibleRoles)
+          displayName: Initialize Ansible
+
+      - ${{ if eq(parameters.ansibleMitogen, 'true') }}:
+        - script: sudo pip install --disable-pip-version-check --no-cache-dir mitogen
+          displayName: Install Ansible Mitogen
+
+        - task: PythonScript@0
+          displayName: Initialize Ansible Mitogen
+          inputs:
+            scriptSource: inline
+            script: |
+              import os, ansible_mitogen
+              path = "$(acidDir)/agents/${{ parameters.provider }}/ansible.cfg"
+              config = (
+                  "[defaults]\n"
+                  f"strategy_plugins = {os.path.dirname(ansible_mitogen.__file__)}/plugins/strategy\n"
+                  "strategy = mitogen_linear\n"
+              )
+              with open(path, "wt") as file:
+                  file.write(config)
+              print(f"\033[32mAnsible configuration ({path}):\033[30m")
+              print(config)
+
+      - task: Cache@2
+        inputs:
+          key: acidTerraformPlugins | $(terraformWorkingDir)/agent.tf | $(terraformWorkingDir)/common.tf
+          path: $(terraformWorkingDir)/.terraform
+        displayName: Cache Terraform plugins
+
+      - script: terraform init -input=false
+        displayName: Initialize Terraform
+        workingDirectory: $(terraformWorkingDir)
+
+      - template: ${{ parameters.provider }}/run_script.yml
+        parameters:
+          connection: ${{ parameters.connection }}
+          region: ${{ parameters.region }}
+          workingDirectory: $(terraformWorkingDir)
+          inlineScript: $(acidDir)/agents/tf_run.py apply -auto-approve -input=false
+          displayName: Start agent
+          env:
+            AZURE_AGENT_TOKEN: $(agentManagerToken)
+            AZURE_AGENT_SHUTDOWN_TIMEOUT: ${{ parameters.timeout }}
+            AZURE_AGENT_NAME: $(agentName)
+            AZURE_AGENT_URL: $(System.TeamFoundationCollectionUri)
+            AZURE_AGENT_POOL: ${{ parameters.agentPool }}
+            AZURE_AGENT_VERSION: ${{ parameters.agentVersion }}
+            AZURE_AGENT_IN_MEMORY_WORK_DIR: ${{ parameters.inMemoryWorkDir }}
+            ANSIBLE_ROLES_PATH: $(ansibleRolePath)
+
+      - publish: $(terraformWorkingDir)
+        artifact: Acid State ${{ parameters.agentDescription }}
+        displayName: Put state
+        condition: always()

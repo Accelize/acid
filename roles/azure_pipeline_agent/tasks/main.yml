@@ -1,0 +1,169 @@
+---
+
+- name: Ensure agent Shutdown timeout is set
+  command: shutdown -h {{ agent_shutdown_timeout }}
+  changed_when: false
+  when: agent_shutdown_timeout != ""  # noqa 602
+
+- name: Get Agent user
+  set_fact:
+    agent_user: "{{ ansible_user }}"
+  when: agent_user is not defined
+
+- name: Ensure the agent directories exists
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ agent_user }}"
+    group: "{{ agent_user }}"
+  with_items:
+    - "{{ agent_directory }}"
+    - "{{ agent_work_directory }}"
+
+- name: Ensure the agent work directories are configured as tmpfs
+  lineinfile:
+    path: /etc/fstab
+    regexp: "^tmpfs {{ item }}"
+    line: "tmpfs {{ item }} tmpfs rw,nodev,nosuid 0 0"
+  with_items:
+    - /tmp
+    - "{{ agent_work_directory }}"
+  when: agent_tmpfs | bool
+
+- name: Ensure tmpfs are mounted
+  command: mount -a
+  changed_when: false
+  when: agent_tmpfs | bool
+
+- name: Ensure DNF is configured
+  ini_file:
+    path: /etc/dnf/dnf.conf
+    section: main
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+  with_items:
+    - option: max_parallel_downloads
+      value: 10
+    - option: install_weak_deps
+      value: "false"
+    - option: assumeyes
+      value: "true"
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version != "7"
+
+- name: Ensure YUM is configured
+  ini_file:
+    path: /etc/yum.conf
+    section: main
+    option: assumeyes
+    value: "1"
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version == "7"
+
+- name: Ensure APT is configured
+  copy:
+    src: apt_conf
+    dest: /etc/apt/apt.conf.d/no-recommend
+  when: ansible_os_family == 'Debian'
+
+- name: Ensure PIP is configured
+  ini_file:
+    path: /etc/pip.conf
+    section: global
+    option: disable-pip-version-check
+    value: "true"
+
+- name: Ensure Apt cache is up to date
+  apt:
+    update_cache: true
+  retries: 10
+  delay: 1
+  changed_when: false
+  when: ansible_os_family == 'Debian'
+
+- name: Ensure Wandisco Git repository is present
+  yum:
+    name: http://opensource.wandisco.com/rhel/7/git/x86_64/wandisco-git-release-7-2.noarch.rpm
+    state: present
+  retries: 10
+  delay: 1
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version == "7"
+
+- name: Ensure Git is present and up to date
+  package:
+    name: git
+    state: latest  # noqa 403
+  retries: 10
+  delay: 1
+
+- name: Get the agent latest release
+  uri:
+    url: https://api.github.com/repos/microsoft/azure-pipelines-agent/releases/latest
+    body_format: json
+  register: _agent_release
+  retries: 10
+  delay: 1
+  when: agent_version == ""  # noqa 602
+
+- name: Set the agent version to the latest release
+  set_fact:
+    agent_version: "{{ _agent_release.json['tag_name'] | strip('v') }}"
+  when: agent_version == ""  # noqa 602
+
+- name: "Ensure the agent is installed with version {{ agent_version }}"
+  unarchive:
+    src: "https://vstsagentpackage.azureedge.net/agent/{{ agent_version }}/\
+          vsts-agent-linux-x64-{{ agent_version }}.tar.gz"
+    dest: "{{ agent_directory }}"
+    owner: "{{ agent_user }}"
+    group: "{{ agent_user }}"
+    remote_src: true
+    creates: "{{ agent_directory }}/config.sh"
+  retries: 10
+  delay: 1
+
+- name: Ensure the agent dependencies are installed
+  command: ./bin/installdependencies.sh
+  args:
+    chdir: "{{ agent_directory }}"
+  changed_when: false
+
+- block:
+    - name: Ensure the agent is configured
+      command: "./config.sh --unattended --acceptteeeula
+               --pool '{{ agent_pool }}' --agent '{{ agent_name }}' --replace
+               --url '{{ agent_url }}' --auth PAT --token '{{ agent_token }}'
+               --work '{{ agent_work_directory }}/work'"
+      become: true
+      become_user: "{{ agent_user }}"
+      args:
+        chdir: "{{ agent_directory }}"
+      changed_when: false
+      when:
+        - agent_name != ""  # noqa 602
+        - agent_token != ""  # noqa 602
+        - agent_url != ""  # noqa 602
+        - agent_pool != ""  # noqa 602
+  rescue:
+    - name: Get Agent configuration logs
+      shell: "cat {{ agent_directory }}/_diag/*.log"
+      failed_when: true
+
+- name: Ensure the agent service is installed and started
+  command: "{{ item }}"
+  args:
+    chdir: "{{ agent_directory }}"
+  changed_when: false
+  with_items:
+    - ./svc.sh install
+    - ./svc.sh start
+  notify: Ensure agent service is restarted
+  when:
+    - agent_name != ""  # noqa 602
+    - agent_token != ""  # noqa 602
+    - agent_url != ""  # noqa 602
+    - agent_pool != ""  # noqa 602

@@ -1,0 +1,5 @@
+---
+- hosts: all
+  become: true
+  roles:
+    - name: azure_pipeline_agent

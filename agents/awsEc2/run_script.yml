@@ -1,0 +1,20 @@
+---
+parameters:
+  connection:
+  region:
+  workingDirectory:
+  env: {}
+  displayName:
+  inlineScript:
+
+steps:
+  - task: AWSShellScript@1
+    displayName: ${{ parameters.displayName }}
+    inputs:
+      awsCredentials: ${{ coalesce(parameters.connection, 'AWS') }}
+      regionName: ${{ parameters.region }}
+      scriptType: inline
+      inlineScript: ${{ parameters.inlineScript }}
+      disableAutoCwd: true
+      workingDirectory: ${{ parameters.workingDirectory }}
+    env: ${{ parameters.env }}

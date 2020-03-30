@@ -1,0 +1,7 @@
+---
+
+- name: Ensure agent service is restarted to detect capabilities changes
+  command: ./svc.sh restart
+  args:
+    chdir: "{{ agent_directory }}"
+  changed_when: false

@@ -1,0 +1,12 @@
+{
+  "Error requesting spot instances:": {
+    "update_tfvars": {
+      "spot": "false"
+    },
+    "warn": "Your parameters seems to not be compatible with spot instances, set 'spot: false' parameter to disable it and avoid useless retries."
+  },
+  "InvalidSubnetID.NotFound:": {},
+  "No default subnet for availability zone: 'null'": {},
+  "Error while waiting for spot request": {},
+  "HTTP request error.": {}
+}

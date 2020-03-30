@@ -1,0 +1,10 @@
+---
+agent_name: "{{ lookup('env','AZURE_AGENT_NAME') | default(omit) }}"
+agent_token: "{{ lookup('env','AZURE_AGENT_TOKEN') | default(omit) }}"
+agent_shutdown_timeout: "{{ lookup('env','AZURE_AGENT_SHUTDOWN_TIMEOUT') | default(omit) }}"
+agent_directory: /opt/vsts
+agent_work_directory: /var/vsts
+agent_url: "{{ lookup('env','AZURE_AGENT_URL') | default(omit) }}"
+agent_pool: "{{ lookup('env','AZURE_AGENT_POOL') | default(omit) }}"
+agent_version: "{{ lookup('env','AZURE_AGENT_VERSION') | default(omit) }}"
+agent_tmpfs: "{{ lookup('env','AZURE_AGENT_IN_MEMORY_WORK_DIR') | default(false) }}"
