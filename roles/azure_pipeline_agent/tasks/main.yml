@@ -84,8 +84,7 @@
 
 - name: Get the agent latest release
   uri:
-    url: "https://api.github.com/repos/microsoft/\
-          azure-pipelines-agent/releases/latest"
+    url: https://api.github.com/repos/microsoft/azure-pipelines-agent/releases/latest
     body_format: json
   register: agent_release
   retries: 10
@@ -93,10 +92,8 @@
 
 - name: Ensure the agent is installed
   unarchive:
-    src: "https://vstsagentpackage.azureedge.net/agent/\
-          {{ agent_release.json['tag_name'] | strip('v') }}/\
-          vsts-agent-linux-x64-\
-          {{ agent_release.json['tag_name'] | strip('v') }}.tar.gz"
+    src: "https://vstsagentpackage.azureedge.net/agent/{{ agent_release.json['tag_name'] | strip('v') }}/\
+          vsts-agent-linux-x64-{{ agent_release.json['tag_name'] | strip('v') }}.tar.gz"
     dest: "{{ agent_directory }}"
     owner: "{{ agent_user }}"
     group: "{{ agent_user }}"
@@ -111,22 +108,25 @@
     chdir: "{{ agent_directory }}"
   changed_when: false
 
-- name: Ensure the agent is configured
-  command: "./config.sh --unattended --acceptteeeula
-           --pool '{{ agent_pool }}' --agent '{{ agent_name }}' --replace
-           --url '{{ agent_url }}'
-           --work '{{ agent_work_dir }}'
-           --auth PAT --token '{{ agent_token }}'"
-  become: true
-  become_user: "{{ agent_user }}"
-  args:
-    chdir: "{{ agent_directory }}"
-  changed_when: false
-  when:
-    - agent_name != ""  # noqa 602
-    - agent_token != ""  # noqa 602
-    - agent_url != ""  # noqa 602
-    - agent_pool != ""  # noqa 602
+- block:
+    - name: Ensure the agent is configured
+      command: "./config.sh --unattended --acceptteeeula
+               --pool '{{ agent_pool }}' --agent '{{ agent_name }}' --replace
+               --url '{{ agent_url }}' --auth PAT --token '{{ agent_token }}'"
+      become: true
+      become_user: "{{ agent_user }}"
+      args:
+        chdir: "{{ agent_directory }}"
+      changed_when: false
+      when:
+        - agent_name != ""  # noqa 602
+        - agent_token != ""  # noqa 602
+        - agent_url != ""  # noqa 602
+        - agent_pool != ""  # noqa 602
+  rescue:
+    - name: Get Agent configuration logs
+      shell: "cat {{ agent_directory }}/_diag/*.log"
+      failed_when: true
 
 - name: Ensure the agent service is installed and started
   command: "{{ item }}"

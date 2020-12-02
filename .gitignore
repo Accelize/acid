@@ -1,9 +1,3 @@
-# Tests generated files
-.cache/
-.coverage
-.pytest_cache/
-.tox/
-
 # Python compiled files
 __pycache__/
 *.py[cod]
@@ -35,3 +29,5 @@ Thumbs.db
 *.tfstate.*
 *tfplan*
 *.tfvars
+*.tfvars.json
+!images.auto.tfvars.json

@@ -1,6 +1,0 @@
----
-extends: default
-rules:
-  # Incompatible with some Azure Pipeline syntax
-  indentation: disable
-  line-length: disable

@@ -1,16 +1,11 @@
 ---
-# Stop an AWS EC2 instance started with "start.yml"
 
 parameters:
-  # Job name to use
   jobName: stopAgent
-  # Agent description
-  agentDescription: AWS EC2
-  # Agent instance provider
+  agentDescription: Acid
   provider: awsEc2
-  # Path to "acid" directory
-  acidDir: $(Build.SourcesDirectory)/acid
-  # Job to wait for completion before trigger agent stop
+  connection:
+  region:
   dependsOn: startAgent
 
 jobs:
@@ -18,63 +13,54 @@ jobs:
     displayName: Stop ${{ parameters.agentDescription }} agent
     dependsOn: ${{ parameters.dependsOn }}
     condition: always()
+    pool:
+      vmImage: ubuntu-20.04
     variables:
+      - name: acidDir
+        value: $(Agent.BuildDirectory)/.acid
       - name: terraformWorkingDir
-        value: $(acidPath.acidDir)/agents/${{ parameters.provider }}
-      - name: agentName
-        value: $(Build.BuildId) $(Build.DefinitionName) ${{ parameters.agentDescription }}
+        value: $(acidDir)/agents/${{ parameters.provider }}
 
     steps:
 
-      - checkout: self
-        submodules: true
-
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: '3.x'
-          addToPath: true
-          architecture: 'x64'
-        displayName: Get Python
-
-      - task: PythonScript@0
-        displayName: Autodetect Acid path
-        name: acidPath
-        inputs:
-          scriptSource: inline
-          script: |
-            from os.path import isdir, dirname, join
-            for path in {"$(Agent.BuildDirectory)/s",
-                         "$(Agent.BuildDirectory)/s/acid",
-                         "${{ parameters.acidDir }}"}:
-                print(f'Searching in path: "{path}"')
-                if isdir(join(path, "agents/awsEc2")):
-                    print('Detected Acid path:', path)
-                    break
-            else:
-                raise RuntimeError('Unable to find "acid" directory')
-
-            import sys
-            sys.path.append(path)
-            from __init__ import export
-            export('acidDir', path)
+      - checkout: acid
+        displayName: Checkout Acid
+        fetchDepth: 1
+        path: .acid
 
       - task: DownloadPipelineArtifact@2
-        displayName: Download Terraform state
+        displayName: Get state
         inputs:
-          artifactName: Terraform State ${{ parameters.agentDescription }}
+          artifactName: Acid State ${{ parameters.agentDescription }}
           targetPath: $(terraformWorkingDir)
 
       - script: terraform init -input=false
-        displayName: Initialize Terraform plugins
+        displayName: Initialize Terraform
         workingDirectory: $(terraformWorkingDir)
 
       - ${{ if eq(parameters.provider, 'awsEc2') }}:
         - task: AWSShellScript@1
-          displayName: Stop agent AWS EC2 instance
+          displayName: Stop agent
           inputs:
-            awsCredentials: AWS
-            regionName: eu-west-1
+            awsCredentials: ${{ coalesce(parameters.connection, 'AWS') }}
+            regionName: ${{ parameters.region }}
             scriptType: inline
             inlineScript: terraform destroy -auto-approve -input=false
             disableAutoCwd: true
+            workingDirectory: $(terraformWorkingDir)
+
+      - ${{ if eq(parameters.provider, 'azureVm') }}:
+        - task: AzureCLI@2
+          displayName: Stop agent
+          inputs:
+            azureSubscription: ${{ coalesce(parameters.connection, 'Azure') }}
+            addSpnToEnvironment: true
+            scriptType: pscore
+            scriptLocation: inlineScript
+            inlineScript: |
+              $env:ARM_CLIENT_ID=$env:servicePrincipalId
+              $env:ARM_CLIENT_SECRET=$env:servicePrincipalKey
+              $env:ARM_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
+              $env:ARM_TENANT_ID=$env:tenantId
+              terraform destroy -auto-approve -input=false
             workingDirectory: $(terraformWorkingDir)

@@ -1,139 +1,139 @@
 ---
-# Start an AWS EC2 instance to run and agent
 
 parameters:
-  # Job name to use
   jobName: startAgent
-  # Agent description
-  agentDescription: AWS EC2
-  # Agent instance provider
-  provider: awsEc2
-  # Agent instance type
-  # - awsEc2: EC2 instance type
-  instanceType: f1.2xlarge
-  # Image name to use
-  image: centos_7
-  # Path to "acid" directory
-  acidDir: $(Build.SourcesDirectory)/acid
-  # Path to Ansible "playbook.yml" file. Default to a playbook that only start
-  # the agent.
-  ansiblePlaybook: $(acidPath.acidDir)/agents/playbook.yml
-  # Agent shutdown timeout in minute
-  timeout: 60
-  # Use spot instance
-  spot: true
-  # Jobs dependencies
   dependsOn: []
-  # Agent Pool name
-  agentPool: Default
-  # Job condition
   condition: succeeded()
+  agentDescription: Acid
+  agentPool: Default
+  provider: awsEc2
+  connection:
+  instanceType:
+  spot:
+  timeout: 60
+  region:
+  resourceGroupName:
+  virtualNetworkName:
+  image:
+  ansiblePlaybook:
+  ansibleRequirements:
+  ansibleMitogen: false
 
 jobs:
   - job: ${{ parameters.jobName }}
     displayName: Start ${{ parameters.agentDescription }} agent
     dependsOn: ${{ parameters.dependsOn }}
     condition: ${{ parameters.condition }}
+    pool:
+      vmImage: ubuntu-20.04
     variables:
       - group: agentManager
+      - name: acidDir
+        value: $(Agent.BuildDirectory)/.acid
+      - name: ansibleRoles
+        value: $(acidDir)/roles
       - name: terraformWorkingDir
-        value: $(acidPath.acidDir)/agents/${{ parameters.provider }}
+        value: $(acidDir)/agents/${{ parameters.provider }}
       - name: agentName
-        value: $(Build.BuildId) $(Build.DefinitionName) ${{ parameters.agentDescription }}
+        value: $(Build.BuildId) ${{ parameters.agentDescription }}
       - name: ansibleRolePath
-        value: "~/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles:\
-                $(acidPath.acidDir)/.cache/lib/ansible/roles:\
-                $(acidPath.acidDir)/roles"
+        value: ~/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles:$(ansibleRoles)
+      - ${{ if parameters.ansiblePlaybook }}:
+          - name: ansiblePlaybook
+            value: $(Build.SourcesDirectory)/${{ parameters.ansiblePlaybook }}
+      - ${{ if not(parameters.ansiblePlaybook) }}:
+          - name: ansiblePlaybook
+            value: $(acidDir)/agents/playbook.yml
 
     steps:
 
-      - checkout: self
-        submodules: true
+      - ${{ if not(contains(parameters.ansiblePlaybook, '$(acidDir)')) }}:
+        - checkout: self
+          fetchDepth: 1
+          path: s
 
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: '3.x'
-          addToPath: true
-          architecture: 'x64'
-        displayName: Get Python
+      - checkout: acid
+        displayName: Checkout Acid
+        fetchDepth: 1
+        path: .acid
 
       - task: PythonScript@0
-        displayName: Autodetect Acid path
-        name: acidPath
+        displayName: Initialize agent name
         inputs:
           scriptSource: inline
           script: |
-            from os.path import isdir, dirname, join
-            for path in {"$(Agent.BuildDirectory)/s",
-                         "$(Agent.BuildDirectory)/s/acid",
-                         "${{ parameters.acidDir }}"}:
-                print(f'Searching in path: "{path}"')
-                if isdir(join(path, "agents/awsEc2")):
-                    print('Detected Acid path:', path)
-                    break
-            else:
-                raise RuntimeError('Unable to find "acid" directory')
+            import os, sys, json, pprint, secrets
 
-            import sys
-            sys.path.append(path)
+            providers = [file.name for file in os.scandir("$(acidDir)/agents") if file.is_dir()]
+            if "${{ parameters.provider }}" not in providers:
+                providers = "\n- ".join(providers)
+                sys.exit(
+                    f'\033[31mInvalid "provider" parameter, possible values:\033[30m\n- {providers}'
+                )
 
-            from __init__ import export
-            export('acidDir', path)
+            with open(
+                "$(acidDir)/agents/${{ parameters.provider }}/images.auto.tfvars.json", "rb"
+            ) as file:
+                images = sorted(json.load(file)["images"].keys())
+            if "${{ parameters.image }}" not in images:
+                images = "\n- ".join(images)
+                sys.exit(f'\033[31mInvalid "image" parameter, possible values:\033[30m\n- {images}')
 
-      - task: PythonScript@0
-        displayName: Initialize Ansible
-        inputs:
-          scriptSource: inline
-          script: |
-            import sys
-            sys.path.append("$(acidPath.acidDir)")
-            from __init__ import ensure_ansible_roles
-            ensure_ansible_roles("${{ parameters.ansiblePlaybook }}")
+            parameters = {
+                key: value
+                for key, value in dict(
+                    name=f"acid{secrets.token_hex(12).lower()}",
+                    image="${{ parameters.image }}",
+                    ansiblePlaybook="$(ansiblePlaybook)",
+                    instanceType="${{ parameters.instanceType }}",
+                    spot="${{ parameters.spot }}",
+                    resourceGroupName="${{ parameters.resourceGroupName }}",
+                    virtualNetworkName="${{ parameters.virtualNetworkName }}",
+                ).items()
+                if value
+            }
+            with open("$(terraformWorkingDir)/terraform.tfvars.json", "wt") as json_file:
+                json.dump(parameters, json_file)
+            print("\033[32mAgent parameters:\033[30m")
+            pprint.pp(parameters)
 
-      - script: terraform init -input=false
-        displayName: Initialize Terraform plugins
-        workingDirectory: $(terraformWorkingDir)
+      - ${{ if parameters.ansibleRequirements }}:
+        - script: ansible-galaxy role install -r $(Build.SourcesDirectory)/${{ parameters.ansibleRequirements }} -p $(ansibleRoles)
+          displayName: Initialize Ansible
 
-      - task: PythonScript@0
-        displayName: Initialize Terraform variables
-        inputs:
-          scriptSource: inline
-          script: |
-            import sys
-            sys.path.append("$(acidPath.acidDir)")
-            from __init__ import dump_tfvars, define_unique_name
-            dump_tfvars(
-              "$(terraformWorkingDir)",
-              name="AzurePipeline" + define_unique_name(
-                  "$(System.TeamProject)",
-                  "$(Build.Repository.Name)",
-                  "$(Build.SourceBranchName)",
-                  "$(Build.BuildId)"),
-              image="${{ parameters.image }}",
-              playbook="${{ parameters.ansiblePlaybook }}")
-            print('Agent Name: $(agentName)')
+      - ${{ if eq(parameters.ansibleMitogen, 'true') }}:
+        - script: sudo pip install --disable-pip-version-check --no-cache-dir mitogen
+          displayName: Install Ansible Mitogen
 
-      - ${{ if eq(parameters.provider, 'awsEc2') }}:
         - task: PythonScript@0
-          displayName: Initialize AWS EC2 specific Terraform variables
+          displayName: Initialize Ansible Mitogen
           inputs:
             scriptSource: inline
             script: |
-              import sys
-              sys.path.append("$(acidPath.acidDir)")
-              from __init__ import dump_tfvars
-              dump_tfvars(
-                "$(terraformWorkingDir)",
-                instance_type="${{ parameters.instanceType }}",
-                spot="${{ parameters.spot }}")
+              import os, ansible_mitogen
+              path = "$(acidDir)/agents/${{ parameters.provider }}/ansible.cfg"
+              config = (
+                  "[defaults]\n"
+                  f"strategy_plugins = {os.path.dirname(ansible_mitogen.__file__)}/plugins/strategy\n"
+                  "strategy = mitogen_linear\n"
+              )
+              with open(path, "wt") as file:
+                  file.write(config)
+              print(f"\033[32mAnsible configuration ({path}):\033[30m")
+              print(config)
 
+      - script: terraform init -input=false
+        displayName: Initialize Terraform
+        workingDirectory: $(terraformWorkingDir)
+
+      - ${{ if eq(parameters.provider, 'awsEc2') }}:
         - task: AWSShellScript@1
-          displayName: Start agent AWS EC2 instance
+          displayName: Start agent
           inputs:
-            awsCredentials: AWS
-            regionName: eu-west-1
+            awsCredentials: ${{ coalesce(parameters.connection, 'AWS') }}
+            regionName: ${{ parameters.region }}
             scriptType: inline
-            inlineScript: python apply_with_spot_retries.py
+            inlineScript: python terraform_apply.py
             disableAutoCwd: true
             workingDirectory: $(terraformWorkingDir)
           env:
@@ -144,7 +144,30 @@ jobs:
             AZURE_AGENT_POOL: ${{ parameters.agentPool }}
             ANSIBLE_ROLES_PATH: $(ansibleRolePath)
 
+      - ${{ if eq(parameters.provider, 'azureVm') }}:
+        - task: AzureCLI@2
+          displayName: Start agent
+          inputs:
+            azureSubscription: ${{ coalesce(parameters.connection, 'Azure') }}
+            addSpnToEnvironment: true
+            scriptType: pscore
+            scriptLocation: inlineScript
+            inlineScript: |
+              $env:ARM_CLIENT_ID=$env:servicePrincipalId
+              $env:ARM_CLIENT_SECRET=$env:servicePrincipalKey
+              $env:ARM_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
+              $env:ARM_TENANT_ID=$env:tenantId
+              terraform apply -auto-approve -input=false
+            workingDirectory: $(terraformWorkingDir)
+          env:
+            AZURE_AGENT_TOKEN: $(agentManagerToken)
+            AZURE_AGENT_SHUTDOWN_TIMEOUT: ${{ parameters.timeout }}
+            AZURE_AGENT_NAME: $(agentName)
+            AZURE_AGENT_URL: $(System.TeamFoundationCollectionUri)
+            AZURE_AGENT_POOL: ${{ parameters.agentPool }}
+            ANSIBLE_ROLES_PATH: $(ansibleRolePath)
+
       - publish: $(terraformWorkingDir)
-        artifact: Terraform State ${{ parameters.agentDescription }}
-        displayName: Publish Terraform state
+        artifact: Acid State ${{ parameters.agentDescription }}
+        displayName: Put state
         condition: always()

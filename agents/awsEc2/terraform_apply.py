@@ -1,5 +1,4 @@
 #! /usr/bin/env python3
-# coding=utf-8
 """
 Run "terraform apply", but retries in case of Spot instance specific errors,
 or use "on-demand" instance if too many spot errors.
@@ -11,7 +10,7 @@ from time import sleep
 
 def apply(terraform="terraform"):
     """
-    Apply with retries.
+    Apply with Terraform.
 
     Args:
         terraform (str): Terraform executable.
