@@ -404,8 +404,8 @@ It is possible to connect to the agent using SSH with the following command:
 ```bash
 acid ssh --agentDescription MyAgent
 
-# Standard SSH command arguments are supported, for instance, port forwarding
-acid ssh ssh –L 8080:127.0.0.1:8080
+# Standard SSH command arguments are supported after "--", for instance, port forwarding
+acid ssh ssh -- –L 8080:127.0.0.1:8080
 ```
 
 The utility provides extra commands for convenience:
@@ -463,7 +463,7 @@ run the `acid start` command line).
 
 An SSH key is created at the same time and is used only once for the Ansible 
 configuration. When using the command line utility, this key is stored in the
-`.cache/agents/AGENT` in PEM format.
+`~/.config/acid/agents/AGENT` in PEM format.
 
 ### Cloud credentials
 
