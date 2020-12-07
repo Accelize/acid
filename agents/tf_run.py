@@ -25,7 +25,7 @@ def tf_run(terraform="terraform", args=None):
 
     while True:
         process = subprocess.run(
-            command, universal_newlines=True, stderr=subprocess.PIPE
+            command, universal_newlines=True, stderr=subprocess.PIPE, stdout=sys.stdout
         )
         if not process.returncode:
             for warn in warns:
@@ -57,6 +57,7 @@ def tf_run(terraform="terraform", args=None):
                 if error_warn:
                     warns.add(error_warn)
 
+                sys.stdout.flush()
                 time.sleep(seconds)
                 break
 

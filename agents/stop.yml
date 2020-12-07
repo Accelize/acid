@@ -34,6 +34,12 @@ jobs:
           artifactName: Acid State ${{ parameters.agentDescription }}
           targetPath: $(terraformWorkingDir)
 
+      - task: Cache@2
+        inputs:
+          key: acidTerraformPlugins | $(terraformWorkingDir)/agent.tf | $(terraformWorkingDir)/common.tf
+          path: $(terraformWorkingDir)/.terraform
+        displayName: Cache Terraform plugins
+
       - script: terraform init -input=false
         displayName: Initialize Terraform
         workingDirectory: $(terraformWorkingDir)

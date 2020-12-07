@@ -122,6 +122,12 @@ jobs:
               print(f"\033[32mAnsible configuration ({path}):\033[30m")
               print(config)
 
+      - task: Cache@2
+        inputs:
+          key: acidTerraformPlugins | $(terraformWorkingDir)/agent.tf | $(terraformWorkingDir)/common.tf
+          path: $(terraformWorkingDir)/.terraform
+        displayName: Cache Terraform plugins
+
       - script: terraform init -input=false
         displayName: Initialize Terraform
         workingDirectory: $(terraformWorkingDir)
