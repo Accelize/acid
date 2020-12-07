@@ -1,5 +1,9 @@
-.terraform/
-*.tf
-*.py
+!terraform.tfvars.json
+*.cfg
+*.json
 *.pem
+*.py
+*.tf
+*.yml
 .artifactignore
+.terraform/
