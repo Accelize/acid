@@ -14,7 +14,7 @@ variable "instanceType" {
 
 variable "spot" {
   type        = bool
-  default     = false
+  default     = true
   description = "Spot virtual machine."
 }
 

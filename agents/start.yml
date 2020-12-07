@@ -58,7 +58,7 @@ jobs:
         path: .acid
 
       - task: PythonScript@0
-        displayName: Initialize agent name
+        displayName: Initialize agent parameters
         inputs:
           scriptSource: inline
           script: |
@@ -131,7 +131,7 @@ jobs:
           connection: ${{ parameters.connection }}
           region: ${{ parameters.region }}
           workingDirectory: $(terraformWorkingDir)
-          inlineScript: terraform apply -auto-approve -input=false
+          inlineScript: $(acidDir)/agents/tf_run.py apply -auto-approve -input=false
           displayName: Start agent
           env:
             AZURE_AGENT_TOKEN: $(agentManagerToken)

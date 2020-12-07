@@ -43,5 +43,5 @@ jobs:
           connection: ${{ parameters.connection }}
           region: ${{ parameters.region }}
           workingDirectory: $(terraformWorkingDir)
-          inlineScript: terraform destroy -auto-approve -input=false
+          inlineScript: $(acidDir)/agents/tf_run.py destroy -auto-approve -input=false
           displayName: Stop agent
