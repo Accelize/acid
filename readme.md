@@ -201,6 +201,7 @@ Agent pool configuration:
   short and use common characters. Default to `Acid`.
 * `agentPool`: Name of the Azure Pipeline agent pool where to add the agent. Default to
   `Default`.
+* `agentVersion`: Azure Pipeline agent version to use. Default to the latest version.
 
 Agent hardware configuration:
 * `provider`: Cloud provider to use. Possible values are `awsEc2` (AWS EC2) and 

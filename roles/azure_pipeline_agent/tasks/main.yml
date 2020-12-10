@@ -86,14 +86,20 @@
   uri:
     url: https://api.github.com/repos/microsoft/azure-pipelines-agent/releases/latest
     body_format: json
-  register: agent_release
+  register: _agent_release
   retries: 10
   delay: 1
+  when: agent_version == ""  # noqa 602
 
-- name: Ensure the agent is installed
+- name: Set the agent version to the latest release
+  set_fact:
+    agent_version: "{{ _agent_release.json['tag_name'] | strip('v') }}"
+  when: agent_version == ""  # noqa 602
+
+- name: "Ensure the agent is installed with version {{ agent_version }}"
   unarchive:
-    src: "https://vstsagentpackage.azureedge.net/agent/{{ agent_release.json['tag_name'] | strip('v') }}/\
-          vsts-agent-linux-x64-{{ agent_release.json['tag_name'] | strip('v') }}.tar.gz"
+    src: "https://vstsagentpackage.azureedge.net/agent/{{ agent_version }}/\
+          vsts-agent-linux-x64-{{ agent_version }}.tar.gz"
     dest: "{{ agent_directory }}"
     owner: "{{ agent_user }}"
     group: "{{ agent_user }}"

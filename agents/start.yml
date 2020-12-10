@@ -6,6 +6,7 @@ parameters:
   condition: succeeded()
   agentDescription: Acid
   agentPool: Default
+  agentVersion:
   provider: awsEc2
   connection:
   instanceType:
@@ -145,6 +146,7 @@ jobs:
             AZURE_AGENT_NAME: $(agentName)
             AZURE_AGENT_URL: $(System.TeamFoundationCollectionUri)
             AZURE_AGENT_POOL: ${{ parameters.agentPool }}
+            AZURE_AGENT_VERSION: ${{ parameters.agentVersion }}
             ANSIBLE_ROLES_PATH: $(ansibleRolePath)
 
       - publish: $(terraformWorkingDir)

@@ -5,3 +5,4 @@ agent_shutdown_timeout: "{{ lookup('env','AZURE_AGENT_SHUTDOWN_TIMEOUT') | defau
 agent_directory: /opt/azure_pipeline_agent
 agent_url: "{{ lookup('env','AZURE_AGENT_URL') | default(omit) }}"
 agent_pool: "{{ lookup('env','AZURE_AGENT_POOL') | default(omit) }}"
+agent_version: "{{ lookup('env','AZURE_AGENT_VERSION') | default(omit) }}"
