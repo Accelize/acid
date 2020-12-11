@@ -441,7 +441,7 @@ a command. Note that dependencies that are not used when running the command are
 updated.
 
 ```bash
-acid --update start -a My_agent
+acid start --update -a My_agent
 ```
 
 Running agents information and utility dependencies (Python virtual environment,
@@ -464,7 +464,7 @@ run the `acid start` command line).
 
 An SSH key is created at the same time and is used only once for the Ansible 
 configuration. When using the command line utility, this key is stored in the
-`~/.config/acid/agents/AGENT` in PEM format.
+`~/.config/acid/agents/AGENT` in PEM format and in the `terraform.tfstate` file.
 
 ### Cloud credentials
 
