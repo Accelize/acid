@@ -62,7 +62,9 @@ def tf_run(terraform="terraform", args=None):
                 break
 
         else:
-            print(process.stderr)
+            stderr = process.stderr.strip()
+            if "Error running command 'ANSIBLE_" not in stderr:
+                print(stderr)
             sys.exit(process.returncode)
 
 
