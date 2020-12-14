@@ -240,6 +240,9 @@ Agent software configuration:
 * `timeout`: Agent timeout in minutes. After this timeout, the agent will shutdown 
   itself. This is mainly intended to avoid having an instance stuck indefinitely in case
   of error. Default to `60`.
+* `inMemoryWorkDir`: If `true`, the agent work directory and `/tmp` are mounted in 
+  memory (tmpfs). This improves performance and security at the cost of more memory 
+  usage. Default to `false`.
 
 #### Agent use in other jobs
 

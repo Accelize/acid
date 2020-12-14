@@ -10,6 +10,31 @@
     agent_user: "{{ ansible_user }}"
   when: agent_user is not defined
 
+- name: Ensure the agent directories exists
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ agent_user }}"
+    group: "{{ agent_user }}"
+  with_items:
+    - "{{ agent_directory }}"
+    - "{{ agent_work_directory }}"
+
+- name: Ensure the agent work directories are configured as tmpfs
+  lineinfile:
+    path: /etc/fstab
+    regexp: "^tmpfs {{ item }}"
+    line: "tmpfs {{ item }} tmpfs rw,nodev,nosuid 0 0"
+  with_items:
+    - /tmp
+    - "{{ agent_work_directory }}"
+  when: agent_tmpfs | bool
+
+- name: Ensure tmpfs are mounted
+  command: mount -a
+  changed_when: false
+  when: agent_tmpfs | bool
+
 - name: Ensure DNF is configured
   ini_file:
     path: /etc/dnf/dnf.conf
@@ -75,13 +100,6 @@
   retries: 10
   delay: 1
 
-- name: Ensure the agent directory exists
-  file:
-    path: "{{ agent_directory }}"
-    state: directory
-    owner: "{{ agent_user }}"
-    group: "{{ agent_user }}"
-
 - name: Get the agent latest release
   uri:
     url: https://api.github.com/repos/microsoft/azure-pipelines-agent/releases/latest
@@ -118,7 +136,8 @@
     - name: Ensure the agent is configured
       command: "./config.sh --unattended --acceptteeeula
                --pool '{{ agent_pool }}' --agent '{{ agent_name }}' --replace
-               --url '{{ agent_url }}' --auth PAT --token '{{ agent_token }}'"
+               --url '{{ agent_url }}' --auth PAT --token '{{ agent_token }}'
+               --work '{{ agent_work_directory }}/work'"
       become: true
       become_user: "{{ agent_user }}"
       args:

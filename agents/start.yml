@@ -19,6 +19,7 @@ parameters:
   ansiblePlaybook:
   ansibleRequirements:
   ansibleMitogen: false
+  inMemoryWorkDir:
 
 jobs:
   - job: ${{ parameters.jobName }}
@@ -147,6 +148,7 @@ jobs:
             AZURE_AGENT_URL: $(System.TeamFoundationCollectionUri)
             AZURE_AGENT_POOL: ${{ parameters.agentPool }}
             AZURE_AGENT_VERSION: ${{ parameters.agentVersion }}
+            AZURE_AGENT_IN_MEMORY_WORK_DIR: ${{ parameters.inMemoryWorkDir }}
             ANSIBLE_ROLES_PATH: $(ansibleRolePath)
 
       - publish: $(terraformWorkingDir)
