@@ -230,7 +230,9 @@ Agent hardware configuration:
 
 Agent software configuration:
 * `image`: OS image used on the agent. See the "OS image configuration" section for more
-  information. Default to `ubuntu_18_04`.
+  information. Some images may not be supported by the Azure Pipeline agent, but are 
+  provided for convenience and CLI use (See the agent documentation for more 
+  information on supported OS). Default to `ubuntu_18_04`.
 * `ansiblePlaybook`: Path to Ansible "playbook.yml" file, relative to 
   `Build.SourcesDirectory`. See the "Software configuration" section for more 
   information. Default to a playbook that only starts the agent.
