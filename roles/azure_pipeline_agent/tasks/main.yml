@@ -126,6 +126,24 @@
   retries: 10
   delay: 1
 
+- name: Ensure APT is not running
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+  when: ansible_os_family == 'Debian'
+  with_items:
+    - apt-daily.service
+    - apt-daily.timer
+    - apt-daily-upgrade.service
+    - apt-daily-upgrade.timer
+    - unattended-upgrades.service
+
+- name: Ensure APT is not locked before installing the agent dependencies
+  file:
+    path: /var/lib/apt/lists/lock
+    state: absent
+  when: ansible_os_family == 'Debian'
+
 - name: Ensure the agent dependencies are installed
   command: ./bin/installdependencies.sh
   args:
@@ -142,6 +160,7 @@
       become_user: "{{ agent_user }}"
       args:
         chdir: "{{ agent_directory }}"
+      environment: "{{ agent_environment }}"
       changed_when: false
       when:
         - agent_name != ""  # noqa 602
@@ -153,10 +172,27 @@
       shell: "cat {{ agent_directory }}/_diag/*.log"
       failed_when: true
 
+- name: Ensure the agent environment is set
+  lineinfile:
+    path: "{{ agent_directory }}/.env"
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+    owner: "{{ agent_user }}"
+    group: "{{ agent_user }}"
+    create: true
+  with_items: "{{ agent_environment | dict2items(key_name='key', value_name='value') }}"
+
+- name: Ensure agent knobs from the environment are properly passed to the agent service
+  lineinfile:
+    path: "{{ agent_directory }}/bin/runsvc.sh"
+    insertafter: "^#![a-z/ ]+"
+    line: "export $(cat {{ agent_directory }}/.env)"
+
 - name: Ensure the agent service is installed and started
   command: "{{ item }}"
   args:
     chdir: "{{ agent_directory }}"
+  environment: "{{ agent_environment }}"
   changed_when: false
   with_items:
     - ./svc.sh install

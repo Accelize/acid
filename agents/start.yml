@@ -7,6 +7,7 @@ parameters:
   agentDescription: Acid
   agentPool: Default
   agentVersion:
+  agentEnv: '{"AZP_AGENT_USE_LEGACY_HTTP": "true"}'
   provider: awsEc2
   connection:
   instanceType:
@@ -148,6 +149,7 @@ jobs:
             AZURE_AGENT_URL: $(System.TeamFoundationCollectionUri)
             AZURE_AGENT_POOL: ${{ parameters.agentPool }}
             AZURE_AGENT_VERSION: ${{ parameters.agentVersion }}
+            AZURE_AGENT_ENV: ${{ parameters.agentEnv }}
             AZURE_AGENT_IN_MEMORY_WORK_DIR: ${{ parameters.inMemoryWorkDir }}
             ANSIBLE_ROLES_PATH: $(ansibleRolePath)
 
