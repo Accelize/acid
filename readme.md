@@ -202,9 +202,6 @@ Agent pool configuration:
 * `agentPool`: Name of the Azure Pipeline agent pool where to add the agent. Default to
   `Default`.
 * `agentVersion`: Azure Pipeline agent version to use. Default to the latest version.
-* `agentEnv`: Azure Pipeline agent environment variables as a JSON formatted string. 
-  Can be used to pass global environment variables to the pipeline, or to pass agent 
-  knobs. Default to `{"AZP_AGENT_USE_LEGACY_HTTP": "true"}`.
 
 Agent hardware configuration:
 * `provider`: Cloud provider to use. Possible values are `awsEc2` (AWS EC2) and 
@@ -248,6 +245,9 @@ Agent software configuration:
 * `inMemoryWorkDir`: If `true`, the agent work directory and `/tmp` are mounted in 
   memory (tmpfs). This improves performance and security at the cost of more memory 
   usage. Default to `false`.
+* `agentEnv`: Azure Pipeline agent environment variables as a JSON formatted string. 
+  Can be used to pass global environment variables to the pipeline, or to pass agent 
+  knobs. Default to `{}`.
 
 #### Agent use in other jobs
 
@@ -291,13 +291,34 @@ a predefined list.
 Acid is configured to take the latest available image matching the specification.
 Names are uniformized to not depend on the cloud provider.
 
-Full details on images can be found in the 
-`agents/PROVIDER/images.auto.tfvars.json` file for each provider.
-
 The following command shows available images for a provider:
 ```bash
 acid images PROVIDER
 ```
+
+##### Images configuration file
+
+Full details on images can be found in the 
+`agents/PROVIDER/images.auto.tfvars.json` file for each provider.
+
+This file is a JSON that contain a map of images. For each image, the map key is
+the image name, and the value a map of images parameters.
+
+Some image parameters are provider dependant:
+
+* awsEc2:
+  * `name`: The AMI name. May contain the wildcard character `*`.
+  * `owner`: AWS account ID or account alias of the AMI owner.
+  * `user`: Usenname used to connect to the instance using SSH.
+* azureVm:
+  * `publisher`: The Publisher associated with the Platform Image.
+  * `offer`: The Offer associated with the Platform Image.
+  * `sku`: The SKU of the Platform Image.
+  
+The following generic parameters are also available:
+
+* `agentEnv`: Default agent environment variables for this image. The global
+  `agentEnv` is merged in this value. Must be a JSON formatted string.
 
 #### Software configuration
 
@@ -471,8 +492,10 @@ SSH from the Microsoft-hosted agent start performs the "start" job (Or the machi
 run the `acid start` command line).
 
 An SSH key is created at the same time and is used only once for the Ansible 
-configuration. When using the command line utility, this key is stored in the
-`~/.config/acid/agents/AGENT` in PEM format and in the `terraform.tfstate` file.
+configuration. This key is stored in PEM format and in the `terraform.tfstate` file.
+
+When using from Azure pipeline, the key is stored as artifact.
+When using the command line utility the key is stored in `~/.config/acid/agents/AGENT`.
 
 ### Cloud credentials
 

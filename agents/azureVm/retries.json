@@ -6,5 +6,7 @@
     "warn": "Your parameters seems to not be compatible with spot virtual machines, set 'spot: false' parameter to disable it and avoid useless retries."
   },
   "NicInUse": {},
-  "timeout - last error: dial tcp": {}
+  "InUseNetworkSecurityGroupCannotBeDeleted": {},
+  "timeout - last error: dial tcp": {},
+  "InternalServerError": {}
 }

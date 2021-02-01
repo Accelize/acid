@@ -29,18 +29,18 @@ def tf_run(terraform="terraform", args=None):
         )
         if not process.returncode:
             for warn in warns:
-                print(f"\033[33mWARNING: {warn}\033[30m")
+                print(f"##[warning]{warn}")
             return
         elif failures > retries:
-            sys.exit(f"\033[31mFailure after {failures} retries.\033[30m")
+            sys.exit(f"##[error]Failure after {failures} retries.")
 
         for error_msg in retryable_errors:
             if error_msg in process.stderr:
                 failures += 1
                 seconds = 2 ** failures // 2
                 print(
-                    f"\033[31mError, retrying after {seconds}s ({failures}/{retries})"
-                    f", stderr:\033[30m\n{process.stderr.strip()}"
+                    f"##[debug]Error, retrying after {seconds}s ({failures}/{retries})"
+                    f", stderr:\n{process.stderr.strip()}"
                 )
                 error = retryable_errors[error_msg]
                 update_tfvars = error.get("update_tfvars")
@@ -50,7 +50,7 @@ def tf_run(terraform="terraform", args=None):
                         tfvars.update(update_tfvars)
                     with open("terraform.tfvars.json", "wt") as json_file:
                         json.dump(tfvars, json_file)
-                    print("\033[32mUpdated agent parameters:\033[30m")
+                    print("##[debug]Updated agent parameters:")
                     pprint.pp(tfvars)
 
                 error_warn = error.get("warn")
@@ -62,9 +62,7 @@ def tf_run(terraform="terraform", args=None):
                 break
 
         else:
-            stderr = process.stderr.strip()
-            if "Error running command 'ANSIBLE_" not in stderr:
-                print(stderr)
+            print(process.stderr.strip())
             sys.exit(process.returncode)
 
 

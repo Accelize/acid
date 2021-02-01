@@ -97,9 +97,6 @@ resource "aws_spot_instance_request" "agent" {
       private_key = local.private_key
     }
   }
-  provisioner "local-exec" {
-    command = "${local.ansible} -i '${self.public_ip},'"
-  }
 }
 
 resource "aws_instance" "agent" {
@@ -125,9 +122,6 @@ resource "aws_instance" "agent" {
       user        = local.user
       private_key = local.private_key
     }
-  }
-  provisioner "local-exec" {
-    command = "${local.ansible} -i '${self.public_ip},'"
   }
 }
 
