@@ -133,9 +133,6 @@ resource "azurerm_linux_virtual_machine" "agent" {
       private_key = local.private_key
     }
   }
-  provisioner "local-exec" {
-    command = "${local.ansible} -i '${self.public_ip_address},'"
-  }
 }
 
 locals {

@@ -7,12 +7,6 @@ variable "name" {
   description = "Agent name."
 }
 
-variable "ansiblePlaybook" {
-  type        = string
-  default     = "playbook.yml"
-  description = "Ansible playbook."
-}
-
 variable "image" {
   type        = string
   default     = "ubuntu_18_04"
@@ -41,16 +35,6 @@ locals {
     cidr_blocks = ["${chomp(data.http.public_ip.body)}/32"]
     }
   ]
-  # Ansible-playbook CLI
-  ansible = <<-EOF
-    ANSIBLE_SSH_ARGS="-o ControlMaster=auto -o ControlPersist=60s -o PreferredAuthentications=publickey" \
-    ANSIBLE_PIPELINING="True" ANSIBLE_HOST_KEY_CHECKING="False" ANSIBLE_SSH_RETRIES="3" \
-    ANSIBLE_FORCE_COLOR="True" ANSIBLE_NOCOLOR="False" \
-    ANSIBLE_DEPRECATION_WARNINGS="False" ANSIBLE_ACTION_WARNINGS="False" \
-    ANSIBLE_DISPLAY_SKIPPED_HOSTS="False" ANSIBLE_STDOUT_CALLBACK="debug" \
-    ansible-playbook ${var.ansiblePlaybook} -u ${local.user} \
-    --private-key '${local_file.ssh_key_file.filename}' \
-  EOF
 }
 
 data "http" "public_ip" {
@@ -87,4 +71,9 @@ output "privateKey" {
 output "imageVersion" {
   description = "Image version"
   value       = local.image_version
+}
+
+output "imageDefaultEnv" {
+  description = "Image default agent environment"
+  value       = lookup(local.image, "agentEnv", "{}")
 }

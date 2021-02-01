@@ -204,7 +204,7 @@ Agent pool configuration:
 * `agentVersion`: Azure Pipeline agent version to use. Default to the latest version.
 * `agentEnv`: Azure Pipeline agent environment variables as a JSON formatted string. 
   Can be used to pass global environment variables to the pipeline, or to pass agent 
-  knobs. Default to `{"AZP_AGENT_USE_LEGACY_HTTP": "true"}`.
+  knobs. Default to `{}`.
 
 Agent hardware configuration:
 * `provider`: Cloud provider to use. Possible values are `awsEc2` (AWS EC2) and 

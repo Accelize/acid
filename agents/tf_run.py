@@ -29,7 +29,7 @@ def tf_run(terraform="terraform", args=None):
         )
         if not process.returncode:
             for warn in warns:
-                print(f"##vso[task.logissue type=warning]{warn}")
+                print(f"##[warning]{warn}")
             return
         elif failures > retries:
             sys.exit(f"##[error]Failure after {failures} retries.")
@@ -50,7 +50,7 @@ def tf_run(terraform="terraform", args=None):
                         tfvars.update(update_tfvars)
                     with open("terraform.tfvars.json", "wt") as json_file:
                         json.dump(tfvars, json_file)
-                    print("##[command]Updated agent parameters:")
+                    print("##[debug]Updated agent parameters:")
                     pprint.pp(tfvars)
 
                 error_warn = error.get("warn")
@@ -62,9 +62,7 @@ def tf_run(terraform="terraform", args=None):
                 break
 
         else:
-            stderr = process.stderr.strip()
-            if "Error running command 'ANSIBLE_" not in stderr:
-                print(stderr)
+            print(process.stderr.strip())
             sys.exit(process.returncode)
 
 

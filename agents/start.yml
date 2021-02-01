@@ -7,7 +7,7 @@ parameters:
   agentDescription: Acid
   agentPool: Default
   agentVersion:
-  agentEnv: '{"AZP_AGENT_USE_LEGACY_HTTP": "true"}'
+  agentEnv: "{}"
   provider: awsEc2
   connection:
   instanceType:
@@ -87,7 +87,6 @@ jobs:
                 for key, value in dict(
                     name=f"acid{secrets.token_hex(12).lower()}",
                     image="${{ parameters.image }}",
-                    ansiblePlaybook="$(ansiblePlaybook)",
                     instanceType="${{ parameters.instanceType }}",
                     spot="${{ parameters.spot }}",
                     resourceGroupName="${{ parameters.resourceGroupName }}",
@@ -141,17 +140,22 @@ jobs:
           region: ${{ parameters.region }}
           workingDirectory: $(terraformWorkingDir)
           inlineScript: $(acidDir)/agents/tf_run.py apply -auto-approve -input=false
-          displayName: Start agent
-          env:
-            AZURE_AGENT_TOKEN: $(agentManagerToken)
-            AZURE_AGENT_SHUTDOWN_TIMEOUT: ${{ parameters.timeout }}
-            AZURE_AGENT_NAME: $(agentName)
-            AZURE_AGENT_URL: $(System.TeamFoundationCollectionUri)
-            AZURE_AGENT_POOL: ${{ parameters.agentPool }}
-            AZURE_AGENT_VERSION: ${{ parameters.agentVersion }}
-            AZURE_AGENT_ENV: ${{ parameters.agentEnv }}
-            AZURE_AGENT_IN_MEMORY_WORK_DIR: ${{ parameters.inMemoryWorkDir }}
-            ANSIBLE_ROLES_PATH: $(ansibleRolePath)
+          displayName: Provision agent using Terraform
+
+      - script: $(acidDir)/agents/ansible_run.py
+        displayName: Configure agent using Ansible
+        workingDirectory: $(terraformWorkingDir)
+        env:
+          AZURE_AGENT_TOKEN: $(agentManagerToken)
+          AZURE_AGENT_SHUTDOWN_TIMEOUT: ${{ parameters.timeout }}
+          AZURE_AGENT_NAME: $(agentName)
+          AZURE_AGENT_URL: $(System.TeamFoundationCollectionUri)
+          AZURE_AGENT_POOL: ${{ parameters.agentPool }}
+          AZURE_AGENT_VERSION: ${{ parameters.agentVersion }}
+          AZURE_AGENT_ENV: ${{ parameters.agentEnv }}
+          AZURE_AGENT_IN_MEMORY_WORK_DIR: ${{ parameters.inMemoryWorkDir }}
+          ANSIBLE_ROLES_PATH: $(ansibleRolePath)
+          ANSIBLE_PLAYBOOK: $(ansiblePlaybook)
 
       - publish: $(terraformWorkingDir)
         artifact: Acid State ${{ parameters.agentDescription }}
