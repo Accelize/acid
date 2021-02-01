@@ -181,12 +181,14 @@
     group: "{{ agent_user }}"
     create: true
   with_items: "{{ agent_environment | dict2items(key_name='key', value_name='value') }}"
+  when: agent_environment != {}
 
 - name: Ensure agent knobs from the environment are properly passed to the agent service
   lineinfile:
     path: "{{ agent_directory }}/bin/runsvc.sh"
     insertafter: "^#![a-z/ ]+"
     line: "export $(cat {{ agent_directory }}/.env)"
+  when: agent_environment != {}
 
 - name: Ensure the agent service is installed and started
   command: "{{ item }}"
