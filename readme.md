@@ -471,8 +471,10 @@ SSH from the Microsoft-hosted agent start performs the "start" job (Or the machi
 run the `acid start` command line).
 
 An SSH key is created at the same time and is used only once for the Ansible 
-configuration. When using the command line utility, this key is stored in the
-`~/.config/acid/agents/AGENT` in PEM format and in the `terraform.tfstate` file.
+configuration. This key is stored in PEM format and in the `terraform.tfstate` file.
+
+When using from Azure pipeline, the key is stored as artifact.
+When using the command line utility the key is stored in `~/.config/acid/agents/AGENT`.
 
 ### Cloud credentials
 
