@@ -119,6 +119,7 @@ resource "azurerm_linux_virtual_machine" "agent" {
   os_disk {
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
+    disk_size_gb         = var.volumeSize
   }
   priority        = var.spot ? "Spot" : "Regular"
   eviction_policy = var.spot ? "Deallocate" : null

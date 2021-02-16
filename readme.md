@@ -218,6 +218,7 @@ Agent hardware configuration:
   Machines. Default values:
    * awsEc2: `t3a.micro`
    * azureVm: `Standard_B1s`
+* `volumeSize`: Root volume size in GB. Default to size specified by the image.
 * `spot`: Use spot instances/virtual machines to reduce the cost with the risk of being
   de-provisioned at any time. Possibles values are `true` or `false` only. Default 
   values:
@@ -309,7 +310,7 @@ Some image parameters are provider dependant:
 * awsEc2:
   * `name`: The AMI name. May contain the wildcard character `*`.
   * `owner`: AWS account ID or account alias of the AMI owner.
-  * `user`: Usenname used to connect to the instance using SSH.
+  * `user`: Username used to connect to the instance using SSH.
 * azureVm:
   * `publisher`: The Publisher associated with the Platform Image.
   * `offer`: The Offer associated with the Platform Image.

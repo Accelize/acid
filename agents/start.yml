@@ -17,6 +17,7 @@ parameters:
   resourceGroupName:
   virtualNetworkName:
   image:
+  volumeSize:
   ansiblePlaybook:
   ansibleRequirements:
   ansibleMitogen: false
@@ -91,6 +92,7 @@ jobs:
                     spot="${{ parameters.spot }}",
                     resourceGroupName="${{ parameters.resourceGroupName }}",
                     virtualNetworkName="${{ parameters.virtualNetworkName }}",
+                    volumeSize="${{ parameters.volumeSize }}",
                 ).items()
                 if value
             }

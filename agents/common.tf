@@ -18,6 +18,12 @@ variable "images" {
   description = "Available images"
 }
 
+variable "volumeSize" {
+  type        = number
+  default     = null
+  description = "Volume size. Default to image volume size."
+}
+
 locals {
   # Resources name
   name = var.name

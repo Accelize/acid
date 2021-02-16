@@ -74,6 +74,8 @@ resource "aws_spot_instance_request" "agent" {
   }
   root_block_device {
     delete_on_termination = true
+    volume_size           = var.volumeSize
+    volume_type           = "gp3"
   }
   count                = var.spot ? 1 : 0
   spot_type            = "one-time"
@@ -109,6 +111,8 @@ resource "aws_instance" "agent" {
   }
   root_block_device {
     delete_on_termination = true
+    volume_size           = var.volumeSize
+    volume_type           = "gp3"
   }
   count                                = var.spot ? 0 : 1
   instance_initiated_shutdown_behavior = "terminate"

@@ -1,0 +1,17 @@
+---
+# Pipeline trigger for the acid-cli repository tests
+name: Acid trigger
+trigger:
+  batch: true
+  paths:
+    exclude:
+      - readme.md
+      - .gitignore
+      - LICENSE
+pr: none
+pool:
+  vmImage: ubuntu-latest
+jobs:
+  - job:
+    steps:
+      - checkout: none
