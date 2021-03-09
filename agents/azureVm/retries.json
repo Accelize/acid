@@ -8,5 +8,6 @@
   "NicInUse": {},
   "InUseNetworkSecurityGroupCannotBeDeleted": {},
   "timeout - last error: dial tcp": {},
-  "InternalServerError": {}
+  "InternalServerError": {},
+  "HTTP request error.": {}
 }

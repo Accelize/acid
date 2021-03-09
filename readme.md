@@ -225,7 +225,7 @@ Agent hardware configuration:
    * awsEc2: `true`
    * azureVm: `false`
 * `resourceGroupName`: azureVm only. Existing resource group name to use. Default to 
-  `accelize`.
+  `accelize`. Using a dedicated resource group is recommanded.
 * `virtualNetworkName`: azureVm only. Existing virtual network name to use. Default to 
   `accelize`.
 
@@ -552,6 +552,8 @@ Acid deploys agents instance in the default VPC.
 #### Azure
 
 Acid requires the following permissions:
+
+At the resource group or subscription scope:
 ```json
 [
     "Microsoft.Authorization/*/read",
@@ -566,6 +568,13 @@ Acid requires the following permissions:
     "Microsoft.Network/networkInterfaces/*",
     "Microsoft.Network/virtualNetworks/subnets/join/action",
     "Microsoft.Network/publicIPAddresses/*"
+]
+```
+
+At the subscription scope:
+```json
+[
+    "Microsoft.AVS/register/action"
 ]
 ```
 
