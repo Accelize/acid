@@ -43,6 +43,9 @@ data "aws_ami" "agent" {
 resource "aws_key_pair" "agent" {
   key_name   = local.name
   public_key = local.public_key
+  lifecycle {
+    ignore_changes = [tags]
+  }
 }
 
 resource "aws_security_group" "agent" {
@@ -61,6 +64,9 @@ resource "aws_security_group" "agent" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+  lifecycle {
+    ignore_changes = [tags]
   }
 }
 
@@ -83,12 +89,12 @@ resource "aws_spot_instance_request" "agent" {
   provisioner "local-exec" {
     # "tags" apply to spot instance request and needs to be applied to instance
     # https://github.com/terraform-providers/terraform-provider-aws/issues/32
+    # Using "aws_ec2_tag" generates issues on destroy
     command = <<-EOF
     aws ec2 create-tags --region eu-west-1 \
     --resources ${self.spot_instance_id} --tags Key=Name,Value="${local.name}" \
     EOF
   }
-
   provisioner "remote-exec" {
     # Wait until instance is ready
     inline = ["cd"]
@@ -98,6 +104,9 @@ resource "aws_spot_instance_request" "agent" {
       user        = local.user
       private_key = local.private_key
     }
+  }
+  lifecycle {
+    ignore_changes = [tags]
   }
 }
 
@@ -116,7 +125,6 @@ resource "aws_instance" "agent" {
   }
   count                                = var.spot ? 0 : 1
   instance_initiated_shutdown_behavior = "terminate"
-
   provisioner "remote-exec" {
     # Wait until instance is ready
     inline = ["cd"]
@@ -126,6 +134,9 @@ resource "aws_instance" "agent" {
       user        = local.user
       private_key = local.private_key
     }
+  }
+  lifecycle {
+    ignore_changes = [tags]
   }
 }
 
