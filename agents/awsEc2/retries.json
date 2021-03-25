@@ -7,6 +7,11 @@
   },
   "InvalidSubnetID.NotFound:": {},
   "No default subnet for availability zone: 'null'": {},
-  "Error while waiting for spot request": {},
+  "Error while waiting for spot request": {
+    "update_tfvars": {
+      "spot": "false"
+    },
+    "warn": "Unable to run the instance as spot, running it on-demand instead."
+  },
   "HTTP request error.": {}
 }

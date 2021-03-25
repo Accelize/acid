@@ -9,5 +9,6 @@
   "InUseNetworkSecurityGroupCannotBeDeleted": {},
   "timeout - last error: dial tcp": {},
   "InternalServerError": {},
-  "HTTP request error.": {}
+  "HTTP request error.": {},
+  "You can only retry the Delete operation": {}
 }
