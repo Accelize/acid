@@ -99,7 +99,7 @@ jobs:
             with open("$(terraformWorkingDir)/terraform.tfvars.json", "wt") as json_file:
                 json.dump(parameters, json_file)
             print("\033[32mAgent parameters:\033[30m")
-            pprint.pp(parameters)
+            pprint.pprint(parameters)
 
       - ${{ if parameters.ansibleRequirements }}:
         - script: ansible-galaxy role install -r $(Build.SourcesDirectory)/${{ parameters.ansibleRequirements }} -p $(ansibleRoles)

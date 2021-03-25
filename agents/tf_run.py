@@ -51,7 +51,7 @@ def tf_run(terraform="terraform", args=None):
                     with open("terraform.tfvars.json", "wt") as json_file:
                         json.dump(tfvars, json_file)
                     print("##[debug]Updated agent parameters:")
-                    pprint.pp(tfvars)
+                    pprint.pprint(tfvars)
 
                 error_warn = error.get("warn")
                 if error_warn:
