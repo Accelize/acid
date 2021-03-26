@@ -26,13 +26,13 @@ variable "region" {
 
 variable "resourceGroupName" {
   type        = string
-  default     = "accelize"
+  default     = "acid"
   description = "Resource group name."
 }
 
 variable "virtualNetworkName" {
   type        = string
-  default     = "accelize"
+  default     = "acid"
   description = "Virtual network name"
 }
 

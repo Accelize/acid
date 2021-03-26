@@ -2,7 +2,7 @@
 [![codecov](https://codecov.io/gh/Accelize/acid-cli/branch/master/graph/badge.svg?token=TWXR4CXWS8)](https://codecov.io/gh/Accelize/acid-cli)
 [![PyPI](https://img.shields.io/pypi/v/acidcli.svg)](https://pypi.org/project/acidcli)
 
-# ACID: Accelize Continuous Integration & Delivery
+# ACID: A tool for on-demand Azure pipelines agents
 
 This utility allows running Azure pipelines jobs on on-demand agents hosted by AWS EC2
 or Azure Virtual Machine.
@@ -54,7 +54,7 @@ agents:
 * In your Azure DevOps Project, go in "Project Settings/Service connections".
 * Click on "New service connection".
 * Select "AWS", and click "Next.
-* Set "Service connection name" to "AWS" (Acid default value) or another name, fill your
+* Set "Service connection name" to `AWS` (Acid default value) or another name, fill your
   credentials information, and click "Save".
 
 #### Azure Virtual Machines
@@ -65,12 +65,13 @@ virtual machine agents:
 * Click on "New service connection".
 * Select "Azure Resource Manager", and click "Next.
 * Select "Service principal (automatic)" (or your preferred option), and click "Next.
-* Set "Service connection name" to "Azure" (Acid default value) or another name, fill 
+* Set "Service connection name" to `Azure` (Acid default value) or another name, fill 
   your credentials information, and click "Save".
 
 Some resources must be created:
-* A resource group named "accelize" (Acid default value) or another name.
-* A virtual network named "accelize" (Acid default value) or another name, this
+* A resource group named `acid` (Acid default value) or another name. The use of a 
+  dedicated resource group is highly recommanded.
+* A virtual network named `acid` (Acid default value) or another name, this
   virtual network must contain at least one subnet.
 
 ### Pipeline creation
@@ -225,9 +226,9 @@ Agent hardware configuration:
    * awsEc2: `true`
    * azureVm: `false`
 * `resourceGroupName`: azureVm only. Existing resource group name to use. Default to 
-  `accelize`. Using a dedicated resource group is recommanded.
+  `acid`.
 * `virtualNetworkName`: azureVm only. Existing virtual network name to use. Default to 
-  `accelize`.
+  `acid`.
 
 Agent software configuration:
 * `image`: OS image used on the agent. See the "OS image configuration" section for more
@@ -474,6 +475,12 @@ updated.
 acid start --update -a My_agent
 ```
 
+Note that this command don't update the "acidcli" package itself, you need to use pip to 
+do so:
+```bash
+pip3 install acidcli --upgrade
+```
+
 Running agents information and utility dependencies (Python virtual environment,
 terraform executable, downloaded Ansible roles) are stored in the `.cache` folder.
 
@@ -553,7 +560,7 @@ Acid deploys agents instance in the default VPC.
 
 Acid requires the following permissions:
 
-At the resource group or subscription scope:
+At the resource group scope:
 ```json
 [
     "Microsoft.Authorization/*/read",
