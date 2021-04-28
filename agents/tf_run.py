@@ -17,7 +17,7 @@ def tf_run(terraform="terraform", args=None):
     import pprint
 
     warns = set()
-    retries = 10
+    retries = 9
     failures = 0
     command = [terraform] + (args or sys.argv[1:])
     with open("retries.json", "rt") as file:
@@ -29,7 +29,7 @@ def tf_run(terraform="terraform", args=None):
         )
         if not process.returncode:
             for warn in warns:
-                print(f"##[warning]{warn}")
+                print(f"##vso[task.logissue type=warning]{warn}")
             return
         elif failures > retries:
             sys.exit(f"##[error]Failure after {failures} retries.")
@@ -50,8 +50,9 @@ def tf_run(terraform="terraform", args=None):
                         tfvars.update(update_tfvars)
                     with open("terraform.tfvars.json", "wt") as json_file:
                         json.dump(tfvars, json_file)
-                    print("##[debug]Updated agent parameters:")
+                    print("##[group]Updated agent parameters")
                     pprint.pprint(tfvars)
+                    print("##[endgroup]")
 
                 error_warn = error.get("warn")
                 if error_warn:

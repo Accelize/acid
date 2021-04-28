@@ -72,7 +72,7 @@ jobs:
             if "${{ parameters.provider }}" not in providers:
                 providers = "\n- ".join(providers)
                 sys.exit(
-                    f'\033[31mInvalid "provider" parameter, possible values:\033[30m\n- {providers}'
+                    f'##vso[task.logissue type=error]Invalid "provider" parameter, possible values:\n- {providers}'
                 )
 
             with open(
@@ -81,7 +81,7 @@ jobs:
                 images = sorted(json.load(file)["images"].keys())
             if "${{ parameters.image }}" not in images:
                 images = "\n- ".join(images)
-                sys.exit(f'\033[31mInvalid "image" parameter, possible values:\033[30m\n- {images}')
+                sys.exit(f'\##vso[task.logissue type=error]Invalid "image" parameter, possible values:\n- {images}')
 
             parameters = {
                 key: value
@@ -98,8 +98,9 @@ jobs:
             }
             with open("$(terraformWorkingDir)/terraform.tfvars.json", "wt") as json_file:
                 json.dump(parameters, json_file)
-            print("\033[32mAgent parameters:\033[30m")
+            print("##[group]Agent parameters")
             pprint.pprint(parameters)
+            print("##[endgroup]")
 
       - ${{ if parameters.ansibleRequirements }}:
         - script: ansible-galaxy role install -r $(Build.SourcesDirectory)/${{ parameters.ansibleRequirements }} -p $(ansibleRoles)
@@ -123,8 +124,9 @@ jobs:
               )
               with open(path, "wt") as file:
                   file.write(config)
-              print(f"\033[32mAnsible configuration ({path}):\033[30m")
+              print(f"##[group]Ansible configuration ({path})")
               print(config)
+              print("##[endgroup]")
 
       - task: Cache@2
         inputs:
