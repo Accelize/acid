@@ -80,6 +80,8 @@
     update_cache: true
   retries: 10
   delay: 1
+  register: _apt_cache
+  until: _apt_cache is successful
   changed_when: false
   when: ansible_os_family == 'Debian'
 
@@ -89,6 +91,8 @@
     state: present
   retries: 10
   delay: 1
+  register: _git_redhat7
+  until: _git_redhat7 is successful
   when:
     - ansible_os_family == "RedHat"
     - ansible_distribution_major_version == "7"
@@ -99,6 +103,8 @@
     state: latest  # noqa 403
   retries: 10
   delay: 1
+  register: _git
+  until: _git is successful
 
 - name: Get the agent latest release
   uri:
@@ -107,6 +113,7 @@
   register: _agent_release
   retries: 10
   delay: 1
+  until: _agent_release is successful
   when: agent_version == ""  # noqa 602
 
 - name: Set the agent version to the latest release
@@ -125,12 +132,18 @@
     creates: "{{ agent_directory }}/config.sh"
   retries: 10
   delay: 1
+  register: _agent_download
+  until: _agent_download is successful
 
 - name: Ensure the agent dependencies are installed
   command: ./bin/installdependencies.sh
   args:
     chdir: "{{ agent_directory }}"
   changed_when: false
+  register: _agent_deps
+  until: _agent_deps is successful
+  retries: 10
+  delay: 1
 
 - block:
     - name: Ensure the agent is configured
