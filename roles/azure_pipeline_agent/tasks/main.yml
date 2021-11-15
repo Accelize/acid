@@ -97,9 +97,11 @@
     - ansible_os_family == "RedHat"
     - ansible_distribution_major_version == "7"
 
-- name: Ensure Git is present and up to date
+- name: Ensure Git and CA certificates are present and up to date
   package:
-    name: git
+    name:
+      - git
+      - ca-certificates
     state: latest  # noqa 403
   retries: 10
   delay: 1
@@ -134,14 +136,6 @@
   delay: 1
   register: _agent_download
   until: _agent_download is successful
-
-- name: Ensure EPEL is used to install lttng-ust package  # Fix: https://github.com/microsoft/azure-pipelines-agent/issues/3556
-  lineinfile:
-    path: "{{ agent_directory }}/bin/installdependencies.sh"
-    regexp: '^ *yum install -y wget && wget -P /etc/yum\.repos\.d/ https://packages\.efficios\.com/repo\.files/EfficiOS-RHEL7-x86-64\.repo '
-    line: "                yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ ansible_distribution_major_version }}.noarch.rpm && yum install -y lttng-ust"
-    backrefs: true
-  when: ansible_os_family == "RedHat"
 
 - name: Ensure the agent dependencies are installed
   command: ./bin/installdependencies.sh
