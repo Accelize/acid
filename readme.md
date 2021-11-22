@@ -581,7 +581,9 @@ At the resource group scope:
 At the subscription scope:
 ```json
 [
-    "Microsoft.AVS/register/action"
+    "Microsoft.AVS/register/action",
+    "Microsoft.DataProtection/register/action",
+    "Microsoft.StoragePool/register/action"
 ]
 ```
 
