@@ -141,9 +141,11 @@ resource "aws_instance" "agent" {
 }
 
 locals {
-  _instances = var.spot ? aws_spot_instance_request.agent : aws_instance.agent
-  # IP address, needs to handle the case instance was terminated by timeout
-  ip_address    = length(local._instances) > 0 ? lookup(local._instances[0], "public_ip") : null
+  ip_address = length(local._ip_address) == 0 ? null : local._ip_address[0]
+  _ip_address = flatten([
+    aws_spot_instance_request.agent[*].public_ip,
+    aws_instance.agent[*].public_ip
+  ])
   user          = local.image["user"]
   image_version = data.aws_ami.agent.name
 }
