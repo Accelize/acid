@@ -85,7 +85,7 @@ resource "azurerm_network_security_group" "agent" {
       priority                   = 100 + security_rule.key
       direction                  = "Inbound"
       access                     = "Allow"
-      protocol                   = security_rule.value.protocol
+      protocol                   = title(security_rule.value.protocol)
       source_address_prefixes    = security_rule.value.cidr_blocks
       source_port_range          = "*"
       destination_address_prefix = "*"

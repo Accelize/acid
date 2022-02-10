@@ -37,7 +37,7 @@ def tf_run(terraform="terraform", args=None):
         for error_msg in retryable_errors:
             if error_msg in process.stderr:
                 failures += 1
-                seconds = 2 ** failures // 2
+                seconds = 2**failures // 2
                 print(
                     f"##[debug]Error, retrying after {seconds}s ({failures}/{retries})"
                     f", stderr:\n{process.stderr.strip()}"
