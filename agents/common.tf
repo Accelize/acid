@@ -38,7 +38,7 @@ locals {
     # Allow SSH from agent running Ansible
     port        = 22,
     protocol    = "tcp",
-    cidr_blocks = ["${chomp(data.http.public_ip.body)}/32"]
+    cidr_blocks = ["${chomp(data.http.public_ip.response_body)}/32"]
     }
   ]
 }
